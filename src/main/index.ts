@@ -3,12 +3,15 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { IpcChannels } from '../shared/ipc'
+import { registerPomodoroIpc } from './pomodoro-ipc'
 import { setupAutoUpdater } from './updater'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
-    width: 420,
-    height: 640,
+    width: 480,
+    height: 720,
+    minWidth: 420,
+    minHeight: 640,
     show: false,
     autoHideMenuBar: true,
     title: 'Flux Pomo',
@@ -26,13 +29,11 @@ function createWindow(): void {
     mainWindow.show()
   })
 
-  // Open external links in the OS browser; never create new Electron windows for them.
   mainWindow.webContents.setWindowOpenHandler((details) => {
     void shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
-  // Block in-app navigations away from the app origin (defense in depth).
   mainWindow.webContents.on('will-navigate', (event, url) => {
     const allowed =
       (is.dev &&
@@ -55,6 +56,7 @@ function createWindow(): void {
 
 function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannels.ping, () => 'pong')
+  registerPomodoroIpc()
 }
 
 app.whenReady().then(() => {

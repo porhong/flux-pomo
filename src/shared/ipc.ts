@@ -1,10 +1,16 @@
+import type { HistoryQuery, HistoryResult, PomodoroSettings, Session } from './types'
+
 /** Channel names shared by main and preload. Keep this list small and explicit. */
 export const IpcChannels = {
   ping: 'app:ping',
   updaterCheck: 'updater:check',
   updaterDownload: 'updater:download',
   updaterInstall: 'updater:install',
-  updaterStatus: 'updater:status'
+  updaterStatus: 'updater:status',
+  settingsGet: 'settings:get',
+  settingsSet: 'settings:set',
+  sessionsList: 'sessions:list',
+  sessionsAdd: 'sessions:add'
 } as const
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels]
@@ -47,4 +53,23 @@ export interface FluxPomoApi {
     install: () => Promise<void>
     onStatus: (listener: (status: UpdaterStatus) => void) => () => void
   }
+  settings: {
+    get: () => Promise<PomodoroSettings>
+    set: (settings: PomodoroSettings) => Promise<PomodoroSettings>
+  }
+  sessions: {
+    list: (query: HistoryQuery) => Promise<HistoryResult>
+    add: (session: Omit<Session, 'id'> & { id?: string }) => Promise<Session>
+  }
 }
+
+export type {
+  HistoryQuery,
+  HistoryResult,
+  PomodoroSettings,
+  Session,
+  HistoryView,
+  HistorySummary,
+  DayAggregate,
+  SessionType
+} from './types'

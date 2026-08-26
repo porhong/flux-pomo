@@ -1,45 +1,20 @@
-import Versions from './components/Versions'
-import Updater from './components/Updater'
-import electronLogo from './assets/electron.svg'
+import { useEffect } from 'react'
+import AppRouter from './app/Router'
+import { useSettingsStore } from './stores/settingsStore'
+import { useTimerStore } from './stores/timerStore'
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => {
-    void window.api.ping()
-  }
+  const load = useSettingsStore((s) => s.load)
+  const syncFromSettings = useTimerStore((s) => s.syncFromSettings)
 
-  return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Flux Pomo</div>
-      <div className="text">
-        Electron + <span className="react">React</span>
-        &nbsp;+ <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Press <code>F12</code> to open DevTools in development
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a
-            href="#ping"
-            onClick={(event) => {
-              event.preventDefault()
-              ipcHandle()
-            }}
-          >
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Updater />
-      <Versions />
-    </>
-  )
+  useEffect(() => {
+    void (async () => {
+      await load()
+      syncFromSettings()
+    })()
+  }, [load, syncFromSettings])
+
+  return <AppRouter />
 }
 
 export default App

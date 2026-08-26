@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import { IpcChannels, type FluxPomoApi, type UpdaterStatus } from '../shared/ipc'
+import {
+  IpcChannels,
+  type FluxPomoApi,
+  type HistoryQuery,
+  type PomodoroSettings,
+  type Session,
+  type UpdaterStatus
+} from '../shared/ipc'
 
 /**
  * Expose only explicit, typed helpers — never raw ipcRenderer.
@@ -25,6 +32,15 @@ const api: FluxPomoApi = {
         ipcRenderer.removeListener(IpcChannels.updaterStatus, handler)
       }
     }
+  },
+  settings: {
+    get: () => ipcRenderer.invoke(IpcChannels.settingsGet),
+    set: (settings: PomodoroSettings) => ipcRenderer.invoke(IpcChannels.settingsSet, settings)
+  },
+  sessions: {
+    list: (query: HistoryQuery) => ipcRenderer.invoke(IpcChannels.sessionsList, query),
+    add: (session: Omit<Session, 'id'> & { id?: string }) =>
+      ipcRenderer.invoke(IpcChannels.sessionsAdd, session)
   }
 }
 
@@ -35,7 +51,6 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // Fallback for misconfigured windows; production always uses contextIsolation.
   // @ts-expect-error intentional fallback assignment
   window.api = api
 }
