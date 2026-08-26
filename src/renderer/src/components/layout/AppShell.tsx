@@ -1,8 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import TitleBar from './TitleBar'
 
 function AppShell(): React.JSX.Element {
   return (
     <div className="app-shell">
+      <TitleBar />
       <main className="app-main">
         <Outlet />
       </main>

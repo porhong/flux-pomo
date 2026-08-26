@@ -46,7 +46,7 @@ function HistoryPage(): React.JSX.Element {
         <div className="period-nav">
           <button
             type="button"
-            className="btn btn-ghost"
+            className="period-nav-btn"
             aria-label="Previous period"
             onClick={() => {
               setLoading(true)
@@ -60,7 +60,7 @@ function HistoryPage(): React.JSX.Element {
           </span>
           <button
             type="button"
-            className="btn btn-ghost"
+            className="period-nav-btn"
             aria-label="Next period"
             onClick={() => {
               setLoading(true)

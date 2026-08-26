@@ -24,7 +24,7 @@ function TimerPage(): React.JSX.Element {
   const mood = phase === 'focus' && status === 'running' ? 'focus' : 'calm'
 
   return (
-    <div className={`page page-timer mood-page-${mood}`}>
+    <div className="page page-timer">
       <header className="page-header page-header-center">
         <h1 className="brand">Flux Pomo</h1>
         <p className="page-sub">
@@ -40,11 +40,10 @@ function TimerPage(): React.JSX.Element {
           plannedMs={plannedMs}
           focusCountInCycle={focusCountInCycle}
           sessionsUntilLongBreak={settings.sessionsUntilLongBreak}
-        />
-        <TimerControls
-          status={status}
           onStart={start}
           onPause={pause}
+        />
+        <TimerControls
           onReset={reset}
           onSkip={() => {
             void skip()

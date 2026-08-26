@@ -3,14 +3,77 @@
 .app-shell {
   height: 100%;
   display: grid;
-  grid-template-rows: 1fr auto;
-  padding: 20px 20px 12px;
+  grid-template-rows: auto 1fr auto;
+  padding: 0 20px 12px;
   gap: 12px;
+}
+
+.title-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
+  height: 36px;
+  margin: 0 -20px;
+  user-select: none;
+}
+
+.title-bar-drag {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.title-bar-brand {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fog);
+}
+
+.title-bar-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.title-bar-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--fog);
+  width: 46px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.title-bar-btn:hover {
+  color: var(--snow);
+  background: rgba(243, 239, 230, 0.08);
+}
+
+.title-bar-close:hover {
+  color: var(--snow);
+  background: #c42b1c;
+}
+
+.title-bar-btn:focus-visible {
+  outline: 2px solid rgba(141, 181, 100, 0.55);
+  outline-offset: -2px;
 }
 
 .app-main {
   min-height: 0;
   overflow: auto;
+  padding-top: 8px;
   animation: rise 320ms ease-out;
 }
 
@@ -76,55 +139,6 @@
   text-align: center;
   gap: 0;
   transition: filter 600ms ease;
-}
-
-.page-timer:has(.mood-focus) .brand {
-  animation: focusBrandSettle 700ms ease-out both;
-}
-
-.mood-page-calm::before,
-.mood-page-focus::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  transition: opacity 700ms ease;
-}
-
-.mood-page-calm::before {
-  background: radial-gradient(700px 420px at 50% 28%, rgba(199, 232, 184, 0.1), transparent 70%);
-  animation: calmPageGlow 7s ease-in-out infinite;
-}
-
-.mood-page-focus::before {
-  background: radial-gradient(640px 480px at 50% 32%, rgba(141, 181, 100, 0.2), transparent 68%);
-  animation: focusPageGlow 2.8s ease-in-out infinite;
-}
-
-.page-timer > * {
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes calmPageGlow {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes focusPageGlow {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
 }
 
 .page-header {
@@ -206,10 +220,8 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   transition:
-    color 400ms ease,
-    background 400ms ease,
-    box-shadow 400ms ease,
-    transform 400ms ease;
+    color 300ms ease,
+    background 300ms ease;
 }
 
 .timer-ring {
@@ -218,36 +230,9 @@
   height: 260px;
   margin: 0 auto;
   flex-shrink: 0;
-  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.timer-aura {
-  position: absolute;
-  inset: -18%;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(circle, rgba(141, 181, 100, 0.28) 0%, transparent 68%);
-  opacity: 0.55;
-  transition:
-    opacity 500ms ease,
-    background 500ms ease,
-    transform 500ms ease;
-}
-
-.timer-orbit {
-  position: absolute;
-  inset: 8%;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  border: 1px solid rgba(199, 232, 184, 0.12);
-  opacity: 0;
-}
-
-.timer-ring svg {
-  position: relative;
-  z-index: 1;
+.timer-ring > svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -257,19 +242,18 @@
 .timer-ring .track {
   fill: none;
   stroke: var(--ring-track);
-  stroke-width: 10;
-  transition: stroke 400ms ease;
+  stroke-width: 8;
+  transition: stroke 300ms ease;
 }
 
 .timer-ring .progress {
   fill: none;
   stroke: var(--matcha);
-  stroke-width: 10;
+  stroke-width: 8;
   stroke-linecap: round;
   transition:
     stroke-dashoffset 200ms linear,
-    stroke 400ms ease,
-    filter 400ms ease;
+    stroke 300ms ease;
 }
 
 .timer-ring.focus .progress {
@@ -287,251 +271,130 @@
 .timer-core {
   position: absolute;
   inset: 0;
-  z-index: 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+  padding: 28px 0 20px;
   pointer-events: none;
 }
 
 .timer-time {
   font-family: var(--font-display);
-  font-size: 56px;
+  font-size: 48px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
   margin: 0;
   font-variant-numeric: tabular-nums;
-  transform: translateY(2px);
+}
+
+.timer-toggle {
+  appearance: none;
+  border: none;
+  pointer-events: auto;
+  cursor: pointer;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--matcha);
+  color: var(--ink);
+  flex-shrink: 0;
   transition:
-    text-shadow 450ms ease,
-    color 450ms ease,
-    letter-spacing 450ms ease;
+    background 160ms ease,
+    transform 120ms ease;
+}
+
+.timer-toggle:hover {
+  background: var(--matcha-soft);
+}
+
+.timer-toggle:active {
+  transform: scale(0.96);
+}
+
+.timer-toggle:focus-visible {
+  outline: 2px solid rgba(141, 181, 100, 0.7);
+  outline-offset: 3px;
+}
+
+.timer-toggle svg {
+  display: block;
+}
+
+.status-idle .timer-toggle svg,
+.status-paused .timer-toggle svg {
+  /* Optical center for play triangle */
+  transform: translateX(1px);
 }
 
 .timer-meta {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 61%;
   margin: 0;
   color: var(--fog);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-align: center;
-  transition: opacity 400ms ease;
 }
 
 /* —— Calm: idle + rest —— */
-.mood-calm .phase-pill {
-  animation: calmPill 4.8s ease-in-out infinite;
-}
-
-.mood-calm .timer-aura {
-  animation: calmAura 5.5s ease-in-out infinite;
-}
-
 .mood-calm .timer-ring {
-  animation: calmBreathe 5.5s ease-in-out infinite;
-}
-
-.mood-calm.phase-shortBreak .timer-aura,
-.mood-calm.phase-longBreak .timer-aura {
-  background: radial-gradient(circle, rgba(125, 155, 118, 0.26) 0%, transparent 70%);
-}
-
-.mood-calm.phase-longBreak .timer-aura {
-  background: radial-gradient(circle, rgba(217, 118, 91, 0.22) 0%, transparent 70%);
-}
-
-.mood-calm .timer-time {
-  text-shadow: 0 0 24px rgba(199, 232, 184, 0.12);
-}
-
-.mood-calm .timer-orbit {
-  opacity: 0.55;
-  animation: calmOrbit 14s linear infinite;
+  animation: ringBreathe 6s ease-in-out infinite;
 }
 
 /* —— Focus: productive running —— */
 .mood-focus .phase-pill {
   color: var(--ink);
   background: var(--matcha);
-  box-shadow: 0 0 0 1px rgba(199, 232, 184, 0.25), 0 8px 24px rgba(141, 181, 100, 0.28);
-  animation: focusPillIn 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.mood-focus .timer-aura {
-  opacity: 0.95;
-  background: radial-gradient(circle, rgba(141, 181, 100, 0.42) 0%, rgba(141, 181, 100, 0.08) 48%, transparent 72%);
-  animation: focusAura 2.4s ease-in-out infinite;
-}
-
-.mood-focus .timer-orbit {
-  opacity: 0.9;
-  border-color: rgba(141, 181, 100, 0.35);
-  animation: focusOrbit 3.2s ease-in-out infinite;
+  animation: pillSettle 360ms ease-out both;
 }
 
 .mood-focus .timer-ring {
-  animation: focusEngage 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: ringSettle 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .mood-focus .progress {
-  filter: drop-shadow(0 0 6px rgba(141, 181, 100, 0.65));
-  animation: focusStroke 2.2s ease-in-out infinite;
+  stroke-width: 9;
 }
 
-.mood-focus .timer-time {
-  letter-spacing: -0.01em;
-  text-shadow:
-    0 0 18px rgba(141, 181, 100, 0.35),
-    0 0 40px rgba(141, 181, 100, 0.18);
-  animation: focusTickSoft 1s ease-in-out infinite;
-}
-
-.mood-focus .timer-meta {
-  opacity: 0.85;
-}
-
-@keyframes calmBreathe {
+@keyframes ringBreathe {
   0%,
   100% {
     transform: scale(1);
   }
   50% {
-    transform: scale(1.018);
+    transform: scale(1.012);
   }
 }
 
-@keyframes calmAura {
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: scale(0.96);
-  }
-  50% {
-    opacity: 0.72;
-    transform: scale(1.04);
-  }
-}
-
-@keyframes calmPill {
-  0%,
-  100% {
-    opacity: 0.82;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-2px);
-  }
-}
-
-@keyframes calmOrbit {
+@keyframes ringSettle {
   from {
-    transform: rotate(0deg) scale(1);
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.55;
+    opacity: 0.88;
+    transform: scale(0.985);
   }
   to {
-    transform: rotate(360deg) scale(1);
-    opacity: 0.35;
-  }
-}
-
-@keyframes focusEngage {
-  from {
-    transform: scale(0.96);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
-@keyframes focusAura {
-  0%,
-  100% {
-    opacity: 0.75;
-    transform: scale(1);
-  }
-  50% {
     opacity: 1;
-    transform: scale(1.06);
-  }
-}
-
-@keyframes focusOrbit {
-  0%,
-  100% {
     transform: scale(1);
-    opacity: 0.55;
-  }
-  50% {
-    transform: scale(1.045);
-    opacity: 0.95;
   }
 }
 
-@keyframes focusStroke {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 4px rgba(141, 181, 100, 0.45));
-  }
-  50% {
-    filter: drop-shadow(0 0 10px rgba(141, 181, 100, 0.85));
-  }
-}
-
-@keyframes focusTickSoft {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.92;
-  }
-}
-
-@keyframes focusPillIn {
+@keyframes pillSettle {
   from {
-    transform: scale(0.92);
-    opacity: 0.6;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes focusBrandSettle {
-  from {
-    letter-spacing: 0.04em;
     opacity: 0.7;
   }
   to {
-    letter-spacing: -0.02em;
     opacity: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mood-calm .phase-pill,
-  .mood-calm .timer-aura,
   .mood-calm .timer-ring,
-  .mood-calm .timer-orbit,
   .mood-focus .phase-pill,
-  .mood-focus .timer-aura,
-  .mood-focus .timer-orbit,
-  .mood-focus .timer-ring,
-  .mood-focus .progress,
-  .mood-focus .timer-time,
-  .page-timer:has(.mood-focus) .brand,
-  .mood-page-calm::before,
-  .mood-page-focus::before {
+  .mood-focus .timer-ring {
     animation: none !important;
   }
 }
@@ -550,7 +413,7 @@
   border: none;
   cursor: pointer;
   border-radius: 999px;
-  min-height: 44px;
+  min-height: 40px;
   min-width: 88px;
   padding: 0 18px;
   font-weight: 600;
@@ -694,6 +557,40 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.period-nav-btn {
+  appearance: none;
+  border: 1px solid rgba(243, 239, 230, 0.18);
+  background: transparent;
+  color: var(--snow);
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.period-nav-btn:hover {
+  background: rgba(243, 239, 230, 0.06);
+}
+
+.period-nav-btn:active {
+  transform: scale(0.96);
+}
+
+.period-nav-btn:focus-visible {
+  outline: 2px solid rgba(141, 181, 100, 0.55);
+  outline-offset: 2px;
 }
 
 .period-label {

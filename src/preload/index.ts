@@ -19,6 +19,10 @@ const api: FluxPomoApi = {
     chrome: process.versions.chrome,
     node: process.versions.node
   },
+  window: {
+    minimize: () => ipcRenderer.invoke(IpcChannels.windowMinimize),
+    close: () => ipcRenderer.invoke(IpcChannels.windowClose)
+  },
   updater: {
     check: () => ipcRenderer.invoke(IpcChannels.updaterCheck),
     download: () => ipcRenderer.invoke(IpcChannels.updaterDownload),

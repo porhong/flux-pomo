@@ -3,6 +3,8 @@ import type { HistoryQuery, HistoryResult, PomodoroSettings, Session } from './t
 /** Channel names shared by main and preload. Keep this list small and explicit. */
 export const IpcChannels = {
   ping: 'app:ping',
+  windowMinimize: 'window:minimize',
+  windowClose: 'window:close',
   updaterCheck: 'updater:check',
   updaterDownload: 'updater:download',
   updaterInstall: 'updater:install',
@@ -47,6 +49,10 @@ export interface UpdateCheckResult {
 export interface FluxPomoApi {
   ping: () => Promise<string>
   versions: AppVersions
+  window: {
+    minimize: () => Promise<void>
+    close: () => Promise<void>
+  }
   updater: {
     check: () => Promise<UpdateCheckResult>
     download: () => Promise<void>

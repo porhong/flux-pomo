@@ -11,14 +11,17 @@ import { setupAutoUpdater } from './updater'
 configureUserDataPath()
 
 function createWindow(): void {
+  // Frameless chrome — custom TitleBar in the renderer owns drag + window controls.
   const mainWindow = new BrowserWindow({
     width: 480,
     height: 720,
     minWidth: 420,
     minHeight: 640,
     show: false,
+    frame: false,
     autoHideMenuBar: true,
     title: 'Flux Pomo',
+    backgroundColor: '#12151a',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -58,8 +61,19 @@ function createWindow(): void {
   }
 }
 
+function registerWindowIpc(): void {
+  ipcMain.handle(IpcChannels.windowMinimize, (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  })
+
+  ipcMain.handle(IpcChannels.windowClose, (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close()
+  })
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannels.ping, () => 'pong')
+  registerWindowIpc()
   registerPomodoroIpc()
 }
 
