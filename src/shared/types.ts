@@ -9,6 +9,10 @@ export interface PomodoroSettings {
   sessionsUntilLongBreak: number
   autoStartBreaks: boolean
   autoStartFocus: boolean
+  /** When true, register an OS-wide start/pause shortcut. */
+  shortcutsEnabled: boolean
+  /** Electron accelerator, e.g. CommandOrControl+Shift+Space */
+  toggleTimerAccelerator: string
 }
 
 export interface Session {
@@ -55,5 +59,35 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
   longBreakMinutes: 15,
   sessionsUntilLongBreak: 4,
   autoStartBreaks: false,
-  autoStartFocus: false
+  autoStartFocus: false,
+  shortcutsEnabled: false,
+  toggleTimerAccelerator: 'CommandOrControl+Shift+Space'
+}
+
+/** Normalize / validate Electron accelerator strings used for timer shortcuts. */
+export function normalizeAccelerator(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return DEFAULT_SETTINGS.toggleTimerAccelerator
+  // Basic safety: reject overly long or empty-looking accelerators.
+  if (trimmed.length > 80) return DEFAULT_SETTINGS.toggleTimerAccelerator
+  return trimmed
+}
+
+export function formatAcceleratorLabel(accelerator: string): string {
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.platform)
+  return accelerator
+    .split('+')
+    .map((part) => {
+      const key = part.trim()
+      if (key === 'CommandOrControl') return isMac ? '⌘' : 'Ctrl'
+      if (key === 'Command' || key === 'Cmd') return '⌘'
+      if (key === 'Control' || key === 'Ctrl') return 'Ctrl'
+      if (key === 'Alt' || key === 'Option') return isMac ? '⌥' : 'Alt'
+      if (key === 'Shift') return isMac ? '⇧' : 'Shift'
+      if (key === 'Super' || key === 'Meta') return isMac ? '⌘' : 'Win'
+      if (key === 'Space') return 'Space'
+      if (key.length === 1) return key.toUpperCase()
+      return key
+    })
+    .join(isMac ? '' : ' + ')
 }

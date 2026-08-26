@@ -1,16 +1,22 @@
-import type { HistoryQuery, HistoryResult, PomodoroSettings, Session } from './types'
+import type { HistoryQuery, HistoryResult, PomodoroSettings, Session, SessionType } from './types'
 
 /** Channel names shared by main and preload. Keep this list small and explicit. */
 export const IpcChannels = {
   ping: 'app:ping',
   windowMinimize: 'window:minimize',
+  windowRestore: 'window:restore',
   windowClose: 'window:close',
+  timerPublish: 'timer:publish',
+  timerState: 'timer:state',
+  timerGetState: 'timer:get-state',
+  timerCommand: 'timer:command',
   updaterCheck: 'updater:check',
   updaterDownload: 'updater:download',
   updaterInstall: 'updater:install',
   updaterStatus: 'updater:status',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  shortcutsStatus: 'shortcuts:status',
   sessionsList: 'sessions:list',
   sessionsAdd: 'sessions:add'
 } as const
@@ -21,6 +27,20 @@ export interface AppVersions {
   electron: string
   chrome: string
   node: string
+}
+
+export type TimerStatus = 'idle' | 'running' | 'paused'
+export type TimerCommand = 'start' | 'pause' | 'toggle'
+
+/** Snapshot pushed from the main renderer (owns the ticker) to the mini window. */
+export interface TimerSnapshot {
+  phase: SessionType
+  status: TimerStatus
+  remainingMs: number
+  plannedMs: number
+  endsAt: number | null
+  focusCountInCycle: number
+  sessionsUntilLongBreak: number
 }
 
 export type UpdaterStatus =
@@ -45,13 +65,28 @@ export interface UpdateCheckResult {
   message?: string
 }
 
+export interface ShortcutStatus {
+  enabled: boolean
+  accelerator: string | null
+  registered: boolean
+  error: string | null
+}
+
 /** Renderer-facing API surface (exposed via contextBridge). */
 export interface FluxPomoApi {
   ping: () => Promise<string>
   versions: AppVersions
   window: {
     minimize: () => Promise<void>
+    restore: () => Promise<void>
     close: () => Promise<void>
+  }
+  timer: {
+    publish: (snapshot: TimerSnapshot) => Promise<void>
+    getState: () => Promise<TimerSnapshot | null>
+    onState: (listener: (snapshot: TimerSnapshot) => void) => () => void
+    command: (command: TimerCommand) => Promise<void>
+    onCommand: (listener: (command: TimerCommand) => void) => () => void
   }
   updater: {
     check: () => Promise<UpdateCheckResult>
@@ -62,6 +97,9 @@ export interface FluxPomoApi {
   settings: {
     get: () => Promise<PomodoroSettings>
     set: (settings: PomodoroSettings) => Promise<PomodoroSettings>
+  }
+  shortcuts: {
+    status: () => Promise<ShortcutStatus>
   }
   sessions: {
     list: (query: HistoryQuery) => Promise<HistoryResult>

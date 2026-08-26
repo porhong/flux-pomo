@@ -1,5 +1,148 @@
 @import './tokens.css';
 
+/* —— Compact always-on-top mini timer —— */
+.mini-shell {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px 14px 16px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(141, 181, 100, 0.16), transparent 55%),
+    var(--ink);
+  border: 1px solid rgba(243, 239, 230, 0.1);
+  user-select: none;
+}
+
+.mini-drag {
+  min-width: 0;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.mini-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+
+.mini-phase {
+  margin: 0;
+  color: var(--matcha-soft);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.mini-time {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+.mini-meta {
+  margin: 0;
+  color: var(--fog);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.mini-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.mini-toggle {
+  appearance: none;
+  border: none;
+  background: var(--matcha);
+  color: var(--ink);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 120ms ease;
+}
+
+.mini-toggle:hover {
+  background: var(--matcha-soft);
+}
+
+.mini-toggle:active {
+  transform: scale(0.96);
+}
+
+.mini-toggle:focus-visible {
+  outline: 2px solid rgba(141, 181, 100, 0.55);
+  outline-offset: 2px;
+}
+
+.status-idle .mini-toggle svg,
+.status-paused .mini-toggle svg {
+  transform: translateX(1px);
+}
+
+.mini-expand {
+  appearance: none;
+  border: 1px solid rgba(243, 239, 230, 0.14);
+  background: rgba(26, 31, 39, 0.9);
+  color: var(--snow);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.mini-expand:hover {
+  color: var(--ink);
+  background: var(--matcha);
+  border-color: transparent;
+}
+
+.mini-expand:active {
+  transform: scale(0.96);
+}
+
+.mini-expand:focus-visible {
+  outline: 2px solid rgba(141, 181, 100, 0.55);
+  outline-offset: 2px;
+}
+
+.mini-shell.phase-shortBreak .mini-phase {
+  color: #9bb892;
+}
+
+.mini-shell.phase-longBreak .mini-phase {
+  color: #e4a08c;
+}
+
 .app-shell {
   height: 100%;
   display: grid;
@@ -468,6 +611,58 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fog);
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fog);
+}
+
+.shortcut-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.shortcut-capture {
+  appearance: none;
+  flex: 1;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 239, 230, 0.12);
+  background: var(--ink);
+  color: var(--snow);
+  padding: 0 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.shortcut-capture:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.shortcut-capture:hover:not(:disabled) {
+  border-color: rgba(141, 181, 100, 0.45);
+}
+
+.shortcut-capture.capturing {
+  border-color: var(--matcha);
+  background: rgba(141, 181, 100, 0.08);
+  color: var(--matcha-soft);
+}
+
+.settings-error {
+  color: var(--coral);
 }
 
 .field input[type='number'] {

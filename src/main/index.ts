@@ -1,73 +1,49 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { app, ipcMain } from 'electron'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
-import { IpcChannels } from '../shared/ipc'
+import { IpcChannels, type TimerSnapshot } from '../shared/ipc'
 import { configureUserDataPath, getUserDataPath } from './paths'
 import { registerPomodoroIpc } from './pomodoro-ipc'
 import { setupAutoUpdater } from './updater'
+import {
+  createMainWindow,
+  createTray,
+  getLatestSnapshot,
+  getMainWindow,
+  minimizeToMini,
+  quitApp,
+  restoreFromMini,
+  setLatestSnapshot
+} from './windows'
+import { clearShortcuts, syncShortcuts } from './shortcuts'
+import { getSettings } from './store'
 
 // Pin settings/history to %APPDATA%\FluxPomo (and equivalents) before any store access.
 configureUserDataPath()
 
-function createWindow(): void {
-  // Frameless chrome — custom TitleBar in the renderer owns drag + window controls.
-  const mainWindow = new BrowserWindow({
-    width: 480,
-    height: 720,
-    minWidth: 420,
-    minHeight: 640,
-    show: false,
-    frame: false,
-    autoHideMenuBar: true,
-    title: 'Flux Pomo',
-    backgroundColor: '#12151a',
-    ...(process.platform === 'linux' ? { icon } : {}),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true
-    }
-  })
-
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
-
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    void shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
-
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowed =
-      (is.dev &&
-        process.env['ELECTRON_RENDERER_URL'] &&
-        url.startsWith(process.env['ELECTRON_RENDERER_URL'])) ||
-      url.startsWith('file://')
-
-    if (!allowed) {
-      event.preventDefault()
-      void shell.openExternal(url)
-    }
-  })
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-}
-
 function registerWindowIpc(): void {
-  ipcMain.handle(IpcChannels.windowMinimize, (event) => {
-    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  ipcMain.handle(IpcChannels.windowMinimize, () => {
+    minimizeToMini()
   })
 
-  ipcMain.handle(IpcChannels.windowClose, (event) => {
-    BrowserWindow.fromWebContents(event.sender)?.close()
+  ipcMain.handle(IpcChannels.windowRestore, () => {
+    restoreFromMini()
+  })
+
+  ipcMain.handle(IpcChannels.windowClose, () => {
+    quitApp()
+  })
+
+  ipcMain.handle(IpcChannels.timerPublish, (_event, snapshot: TimerSnapshot) => {
+    setLatestSnapshot(snapshot)
+  })
+
+  ipcMain.handle(IpcChannels.timerGetState, () => getLatestSnapshot())
+
+  ipcMain.handle(IpcChannels.timerCommand, (_event, command: 'start' | 'pause' | 'toggle') => {
+    const main = getMainWindow()
+    if (main && !main.isDestroyed()) {
+      main.webContents.send(IpcChannels.timerCommand, command)
+    }
   })
 }
 
@@ -90,15 +66,25 @@ app.whenReady().then(() => {
 
   registerIpcHandlers()
   setupAutoUpdater()
-  createWindow()
+  createTray()
+  createMainWindow()
+  syncShortcuts(getSettings())
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    const main = getMainWindow()
+    if (!main) {
+      createMainWindow()
+      return
+    }
+    restoreFromMini()
   })
 })
 
+app.on('will-quit', () => {
+  clearShortcuts()
+})
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  // Tray keeps the process alive on Windows/Linux after windows are hidden.
+  if (process.platform === 'darwin') return
 })

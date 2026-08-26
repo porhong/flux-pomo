@@ -14,6 +14,7 @@ import {
 } from 'date-fns'
 import {
   DEFAULT_SETTINGS,
+  normalizeAccelerator,
   type DayAggregate,
   type HistoryQuery,
   type HistoryResult,
@@ -55,12 +56,17 @@ function clampSettings(input: PomodoroSettings): PomodoroSettings {
     longBreakMinutes: clamp(input.longBreakMinutes, 1, 90),
     sessionsUntilLongBreak: clamp(input.sessionsUntilLongBreak, 1, 12),
     autoStartBreaks: Boolean(input.autoStartBreaks),
-    autoStartFocus: Boolean(input.autoStartFocus)
+    autoStartFocus: Boolean(input.autoStartFocus),
+    shortcutsEnabled: Boolean(input.shortcutsEnabled),
+    toggleTimerAccelerator: normalizeAccelerator(
+      input.toggleTimerAccelerator ?? DEFAULT_SETTINGS.toggleTimerAccelerator
+    )
   }
 }
 
 export function getSettings(): PomodoroSettings {
-  return store().get('settings', DEFAULT_SETTINGS)
+  const stored = store().get('settings', DEFAULT_SETTINGS)
+  return clampSettings({ ...DEFAULT_SETTINGS, ...stored })
 }
 
 export function setSettings(settings: PomodoroSettings): PomodoroSettings {

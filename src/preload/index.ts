@@ -5,6 +5,9 @@ import {
   type HistoryQuery,
   type PomodoroSettings,
   type Session,
+  type ShortcutStatus,
+  type TimerCommand,
+  type TimerSnapshot,
   type UpdaterStatus
 } from '../shared/ipc'
 
@@ -21,7 +24,31 @@ const api: FluxPomoApi = {
   },
   window: {
     minimize: () => ipcRenderer.invoke(IpcChannels.windowMinimize),
+    restore: () => ipcRenderer.invoke(IpcChannels.windowRestore),
     close: () => ipcRenderer.invoke(IpcChannels.windowClose)
+  },
+  timer: {
+    publish: (snapshot: TimerSnapshot) => ipcRenderer.invoke(IpcChannels.timerPublish, snapshot),
+    getState: () => ipcRenderer.invoke(IpcChannels.timerGetState),
+    onState: (listener) => {
+      const handler = (_event: IpcRendererEvent, snapshot: TimerSnapshot): void => {
+        listener(snapshot)
+      }
+      ipcRenderer.on(IpcChannels.timerState, handler)
+      return () => {
+        ipcRenderer.removeListener(IpcChannels.timerState, handler)
+      }
+    },
+    command: (command: TimerCommand) => ipcRenderer.invoke(IpcChannels.timerCommand, command),
+    onCommand: (listener) => {
+      const handler = (_event: IpcRendererEvent, command: TimerCommand): void => {
+        listener(command)
+      }
+      ipcRenderer.on(IpcChannels.timerCommand, handler)
+      return () => {
+        ipcRenderer.removeListener(IpcChannels.timerCommand, handler)
+      }
+    }
   },
   updater: {
     check: () => ipcRenderer.invoke(IpcChannels.updaterCheck),
@@ -40,6 +67,9 @@ const api: FluxPomoApi = {
   settings: {
     get: () => ipcRenderer.invoke(IpcChannels.settingsGet),
     set: (settings: PomodoroSettings) => ipcRenderer.invoke(IpcChannels.settingsSet, settings)
+  },
+  shortcuts: {
+    status: (): Promise<ShortcutStatus> => ipcRenderer.invoke(IpcChannels.shortcutsStatus)
   },
   sessions: {
     list: (query: HistoryQuery) => ipcRenderer.invoke(IpcChannels.sessionsList, query),
