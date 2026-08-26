@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { IpcChannels } from '../shared/ipc'
+import { setupAutoUpdater } from './updater'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -64,6 +65,7 @@ app.whenReady().then(() => {
   })
 
   registerIpcHandlers()
+  setupAutoUpdater()
   createWindow()
 
   app.on('activate', () => {

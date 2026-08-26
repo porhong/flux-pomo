@@ -1,4 +1,5 @@
 import Versions from './components/Versions'
+import Updater from './components/Updater'
 import electronLogo from './assets/electron.svg'
 
 function App(): React.JSX.Element {
@@ -35,6 +36,7 @@ function App(): React.JSX.Element {
           </a>
         </div>
       </div>
+      <Updater />
       <Versions />
     </>
   )

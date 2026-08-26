@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import { IpcChannels, type FluxPomoApi } from '../shared/ipc'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { IpcChannels, type FluxPomoApi, type UpdaterStatus } from '../shared/ipc'
 
 /**
  * Expose only explicit, typed helpers — never raw ipcRenderer.
@@ -11,6 +11,20 @@ const api: FluxPomoApi = {
     electron: process.versions.electron,
     chrome: process.versions.chrome,
     node: process.versions.node
+  },
+  updater: {
+    check: () => ipcRenderer.invoke(IpcChannels.updaterCheck),
+    download: () => ipcRenderer.invoke(IpcChannels.updaterDownload),
+    install: () => ipcRenderer.invoke(IpcChannels.updaterInstall),
+    onStatus: (listener) => {
+      const handler = (_event: IpcRendererEvent, status: UpdaterStatus): void => {
+        listener(status)
+      }
+      ipcRenderer.on(IpcChannels.updaterStatus, handler)
+      return () => {
+        ipcRenderer.removeListener(IpcChannels.updaterStatus, handler)
+      }
+    }
   }
 }
 

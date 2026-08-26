@@ -1,6 +1,10 @@
 /** Channel names shared by main and preload. Keep this list small and explicit. */
 export const IpcChannels = {
-  ping: 'app:ping'
+  ping: 'app:ping',
+  updaterCheck: 'updater:check',
+  updaterDownload: 'updater:download',
+  updaterInstall: 'updater:install',
+  updaterStatus: 'updater:status'
 } as const
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels]
@@ -11,8 +15,36 @@ export interface AppVersions {
   node: string
 }
 
+export type UpdaterStatus =
+  | { type: 'idle' }
+  | { type: 'checking' }
+  | { type: 'available'; version: string }
+  | { type: 'not-available'; version: string }
+  | {
+      type: 'downloading'
+      percent: number
+      bytesPerSecond: number
+      transferred: number
+      total: number
+    }
+  | { type: 'downloaded'; version: string }
+  | { type: 'error'; message: string }
+  | { type: 'skipped'; message: string }
+
+export interface UpdateCheckResult {
+  updateAvailable: boolean
+  version: string
+  message?: string
+}
+
 /** Renderer-facing API surface (exposed via contextBridge). */
 export interface FluxPomoApi {
   ping: () => Promise<string>
   versions: AppVersions
+  updater: {
+    check: () => Promise<UpdateCheckResult>
+    download: () => Promise<void>
+    install: () => Promise<void>
+    onStatus: (listener: (status: UpdaterStatus) => void) => () => void
+  }
 }
