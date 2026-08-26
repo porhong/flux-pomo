@@ -3,8 +3,12 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { IpcChannels } from '../shared/ipc'
+import { configureUserDataPath, getUserDataPath } from './paths'
 import { registerPomodoroIpc } from './pomodoro-ipc'
 import { setupAutoUpdater } from './updater'
+
+// Pin settings/history to %APPDATA%\FluxPomo (and equivalents) before any store access.
+configureUserDataPath()
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -61,6 +65,10 @@ function registerIpcHandlers(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.porhong.fluxpomo')
+
+  if (is.dev) {
+    console.info('[flux-pomo] userData →', getUserDataPath())
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

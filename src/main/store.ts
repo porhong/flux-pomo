@@ -21,20 +21,29 @@ import {
   type PomodoroSettings,
   type Session
 } from '../shared/types'
+import { getUserDataPath } from './paths'
 
 interface StoreSchema {
   settings: PomodoroSettings
   sessions: Session[]
 }
 
-/** electron-store@8 is CJS-friendly with electron-vite's main bundle. */
-const store = new Store<StoreSchema>({
-  name: 'flux-pomo',
-  defaults: {
-    settings: DEFAULT_SETTINGS,
-    sessions: []
+let storeInstance: Store<StoreSchema> | null = null
+
+/** Lazy init so cwd resolves after configureUserDataPath() pins AppData. */
+function store(): Store<StoreSchema> {
+  if (storeInstance == null) {
+    storeInstance = new Store<StoreSchema>({
+      name: 'flux-pomo',
+      cwd: getUserDataPath(),
+      defaults: {
+        settings: DEFAULT_SETTINGS,
+        sessions: []
+      }
+    })
   }
-})
+  return storeInstance
+}
 
 function clampSettings(input: PomodoroSettings): PomodoroSettings {
   const clamp = (value: number, min: number, max: number): number =>
@@ -51,12 +60,12 @@ function clampSettings(input: PomodoroSettings): PomodoroSettings {
 }
 
 export function getSettings(): PomodoroSettings {
-  return store.get('settings', DEFAULT_SETTINGS)
+  return store().get('settings', DEFAULT_SETTINGS)
 }
 
 export function setSettings(settings: PomodoroSettings): PomodoroSettings {
   const next = clampSettings(settings)
-  store.set('settings', next)
+  store().set('settings', next)
   return next
 }
 
@@ -65,9 +74,9 @@ export function addSession(input: Omit<Session, 'id'> & { id?: string }): Sessio
     ...input,
     id: input.id ?? randomUUID()
   }
-  const sessions = store.get('sessions', [])
+  const sessions = store().get('sessions', [])
   sessions.push(session)
-  store.set('sessions', sessions)
+  store().set('sessions', sessions)
   return session
 }
 
@@ -131,7 +140,7 @@ function aggregateDays(sessions: Session[], start: Date, end: Date): DayAggregat
 export function listSessions(query: HistoryQuery): HistoryResult {
   const anchor = parseISO(query.anchorDate)
   const { start, end } = rangeFor(query.view, Number.isNaN(anchor.getTime()) ? new Date() : anchor)
-  const all = store.get('sessions', [])
+  const all = store().get('sessions', [])
   const sessions = all
     .filter((session) => isWithinInterval(parseISO(session.endedAt), { start, end }))
     .sort((a, b) => parseISO(b.endedAt).getTime() - parseISO(a.endedAt).getTime())
@@ -144,4 +153,9 @@ export function listSessions(query: HistoryQuery): HistoryResult {
     sessions,
     days: aggregateDays(sessions, start, end)
   }
+}
+
+/** For diagnostics — e.g. logging where data lives. */
+export function getStoreFilePath(): string {
+  return store().path
 }

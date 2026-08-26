@@ -13,24 +13,31 @@ asarUnpack:
   - resources/**
 win:
   executableName: FluxPomo
-nsis:
-  artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
+  # Portable .exe — run without installing
+  target:
+    - target: portable
+      arch:
+        - x64
+portable:
+  artifactName: ${name}-${version}-portable.${ext}
+  requestExecutionLevel: user
+  unpackDirName: flux-pomo-portable
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
+  target:
+    - target: zip
+      arch:
+        - universal
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
   target:
     - AppImage
-    - deb
   maintainer: porhong
   category: Utility
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-portable.${ext}
 npmRebuild: false
 publish:
   provider: github
