@@ -4,15 +4,16 @@
   --ink-soft: #242b36;
   --fog: #9aa3b2;
   --snow: #f3efe6;
-  --amber: #e8a54b;
-  --amber-soft: #f0c27a;
-  --sage: #7d9b76;
+  /* Smooth Matcha primary */
+  --matcha: #8db564;
+  --matcha-soft: #c7e8b8;
+  --sage: #5f7a52;
   --coral: #d9765b;
   --ring-track: rgba(243, 239, 230, 0.12);
   --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   --radius: 18px;
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Poppins', system-ui, sans-serif;
+  --font-body: 'Poppins', system-ui, sans-serif;
   color-scheme: dark;
 }
 
@@ -32,8 +33,9 @@ body,
 body {
   font-family: var(--font-body);
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(232, 165, 75, 0.18), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgba(125, 155, 118, 0.12), transparent 50%), var(--ink);
+    radial-gradient(1200px 600px at 10% -10%, rgba(141, 181, 100, 0.22), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(199, 232, 184, 0.1), transparent 50%),
+    var(--ink);
   color: var(--snow);
   overflow: hidden;
   user-select: none;

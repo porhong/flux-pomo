@@ -3,6 +3,7 @@ import { formatClock } from '../../lib/time'
 
 interface TimerDisplayProps {
   phase: SessionType
+  status: 'idle' | 'running' | 'paused'
   remainingMs: number
   plannedMs: number
   focusCountInCycle: number
@@ -11,6 +12,7 @@ interface TimerDisplayProps {
 
 function TimerDisplay({
   phase,
+  status,
   remainingMs,
   plannedMs,
   focusCountInCycle,
@@ -21,11 +23,16 @@ function TimerDisplay({
   const progress = plannedMs > 0 ? remainingMs / plannedMs : 0
   const offset = circumference * (1 - progress)
   const label = phase === 'focus' ? 'Focus' : phase === 'shortBreak' ? 'Short break' : 'Long break'
+  const cycle =
+    Math.min(focusCountInCycle + (phase === 'focus' ? 1 : 0), sessionsUntilLongBreak) || 1
+  const mood = phase === 'focus' && status === 'running' ? 'focus' : 'calm'
 
   return (
-    <div className="timer-stage">
+    <div className={`timer-stage mood-${mood} phase-${phase} status-${status}`}>
       <div className="phase-pill">{label}</div>
       <div className={`timer-ring ${phase}`}>
+        <div className="timer-aura" aria-hidden />
+        <div className="timer-orbit" aria-hidden />
         <svg viewBox="0 0 260 260" aria-hidden>
           <circle className="track" cx="130" cy="130" r={radius} />
           <circle
@@ -40,9 +47,7 @@ function TimerDisplay({
         <div className="timer-core">
           <p className="timer-time">{formatClock(remainingMs)}</p>
           <p className="timer-meta">
-            Cycle{' '}
-            {Math.min(focusCountInCycle + (phase === 'focus' ? 1 : 0), sessionsUntilLongBreak)}/
-            {sessionsUntilLongBreak}
+            Cycle {cycle}/{sessionsUntilLongBreak}
           </p>
         </div>
       </div>

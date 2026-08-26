@@ -27,6 +27,7 @@ interface StoreSchema {
   sessions: Session[]
 }
 
+/** electron-store@8 is CJS-friendly with electron-vite's main bundle. */
 const store = new Store<StoreSchema>({
   name: 'flux-pomo',
   defaults: {

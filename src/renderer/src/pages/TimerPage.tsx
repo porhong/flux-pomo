@@ -21,28 +21,36 @@ function TimerPage(): React.JSX.Element {
     syncFromSettings()
   }, [settings, syncFromSettings])
 
+  const mood = phase === 'focus' && status === 'running' ? 'focus' : 'calm'
+
   return (
-    <div className="page">
-      <header className="page-header">
+    <div className={`page page-timer mood-page-${mood}`}>
+      <header className="page-header page-header-center">
         <h1 className="brand">Flux Pomo</h1>
-        <p className="page-sub">Stay with one thing, then rest.</p>
+        <p className="page-sub">
+          {mood === 'focus' ? 'Deep work in progress.' : 'Stay with one thing, then rest.'}
+        </p>
       </header>
-      <TimerDisplay
-        phase={phase}
-        remainingMs={remainingMs}
-        plannedMs={plannedMs}
-        focusCountInCycle={focusCountInCycle}
-        sessionsUntilLongBreak={settings.sessionsUntilLongBreak}
-      />
-      <TimerControls
-        status={status}
-        onStart={start}
-        onPause={pause}
-        onReset={reset}
-        onSkip={() => {
-          void skip()
-        }}
-      />
+
+      <div className="timer-home">
+        <TimerDisplay
+          phase={phase}
+          status={status}
+          remainingMs={remainingMs}
+          plannedMs={plannedMs}
+          focusCountInCycle={focusCountInCycle}
+          sessionsUntilLongBreak={settings.sessionsUntilLongBreak}
+        />
+        <TimerControls
+          status={status}
+          onStart={start}
+          onPause={pause}
+          onReset={reset}
+          onSkip={() => {
+            void skip()
+          }}
+        />
+      </div>
     </div>
   )
 }
