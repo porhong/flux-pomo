@@ -1611,6 +1611,20 @@ html.is-mini #root {
   color: var(--coral);
 }
 
+.updater-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(243, 239, 230, 0.12);
+  overflow: hidden;
+}
+
+.updater-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--amber);
+  transition: width 0.2s ease;
+}
+
 .updater-actions {
   display: flex;
   flex-wrap: wrap;

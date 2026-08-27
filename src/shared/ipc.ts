@@ -63,6 +63,9 @@ export type UpdaterStatus =
   | { type: 'idle' }
   | { type: 'checking' }
   | { type: 'available'; version: string }
+  | { type: 'downloading'; version: string; percent: number }
+  | { type: 'downloaded'; version: string }
+  | { type: 'installing'; version: string }
   | { type: 'not-available'; version: string }
   | { type: 'error'; message: string }
   | { type: 'skipped'; message: string }

@@ -36,7 +36,7 @@ const SETTINGS_TABS: { id: SettingsTab; label: string; title: string; descriptio
     id: 'updates',
     label: 'Updates',
     title: 'Updates',
-    description: 'Check GitHub Releases for a newer portable build.'
+    description: 'Download and install a newer portable build from GitHub Releases.'
   }
 ]
 

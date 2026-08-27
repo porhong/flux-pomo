@@ -9,6 +9,12 @@ function statusLabel(status: UpdaterStatus): string {
       return 'Checking GitHub Releases…'
     case 'available':
       return `Update available: v${status.version}`
+    case 'downloading':
+      return `Downloading v${status.version}… ${status.percent}%`
+    case 'downloaded':
+      return `v${status.version} downloaded — ready to install.`
+    case 'installing':
+      return `Installing v${status.version} and restarting…`
     case 'not-available':
       return 'You’re on the latest version.'
     case 'error':
@@ -21,7 +27,11 @@ function statusLabel(status: UpdaterStatus): string {
 function statusTone(status: UpdaterStatus): 'neutral' | 'ok' | 'warn' | 'error' {
   switch (status.type) {
     case 'available':
+    case 'downloaded':
       return 'warn'
+    case 'downloading':
+    case 'installing':
+      return 'neutral'
     case 'not-available':
       return 'ok'
     case 'error':
@@ -58,14 +68,31 @@ function Updater(): React.JSX.Element {
     } catch (error) {
       setStatus({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Could not open download'
+        message: error instanceof Error ? error.message : 'Could not download update'
       })
     } finally {
       setBusy(false)
     }
   }
 
+  const install = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      await window.api.updater.install()
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Could not install update'
+      })
+      setBusy(false)
+    }
+    // On success the app quits; keep busy so the button stays disabled.
+  }
+
   const tone = statusTone(status)
+  const checking = busy && status.type === 'checking'
+  const downloading = status.type === 'downloading'
+  const installing = status.type === 'installing'
 
   return (
     <div className="updater">
@@ -76,28 +103,50 @@ function Updater(): React.JSX.Element {
 
       <p className={`updater-status updater-status-${tone}`}>{statusLabel(status)}</p>
 
+      {downloading ? (
+        <div
+          className="updater-progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={status.percent}
+        >
+          <div className="updater-progress-bar" style={{ width: `${status.percent}%` }} />
+        </div>
+      ) : null}
+
       <p className="settings-note">
-        Portable builds update by downloading a new `.exe` from GitHub Releases (close the app,
-        replace the file, relaunch).
+        Updates download in the background, then replace this portable app and relaunch when you
+        install.
       </p>
 
       <div className="updater-actions">
         <button
           type="button"
           className="btn btn-primary"
-          disabled={busy}
+          disabled={busy || downloading || installing}
           onClick={() => void check()}
         >
-          {busy && status.type === 'checking' ? 'Checking…' : 'Check for updates'}
+          {checking ? 'Checking…' : 'Check for updates'}
         </button>
         {status.type === 'available' ? (
           <button
             type="button"
             className="btn btn-ghost"
-            disabled={busy}
+            disabled={busy || downloading || installing}
             onClick={() => void download()}
           >
-            Download v{status.version}
+            {busy ? 'Downloading…' : `Download v${status.version}`}
+          </button>
+        ) : null}
+        {status.type === 'downloaded' ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={busy || installing}
+            onClick={() => void install()}
+          >
+            Install and restart
           </button>
         ) : null}
       </div>

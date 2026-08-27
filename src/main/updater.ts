@@ -1,5 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { createWriteStream } from 'node:fs'
+import { access, mkdir, rename, unlink, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { pipeline } from 'node:stream/promises'
+import { Readable } from 'node:stream'
+import { spawn } from 'node:child_process'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { IpcChannels, type UpdateCheckResult, type UpdaterStatus } from '../shared/ipc'
+import { getUserDataPath } from './paths'
+import { quitApp } from './windows'
 
 const GITHUB_OWNER = 'porhong'
 const GITHUB_REPO = 'flux-pomo'
@@ -21,9 +29,11 @@ interface CachedUpdate {
   version: string
   downloadUrl: string
   releaseUrl: string
+  downloadedPath?: string
 }
 
 let cachedUpdate: CachedUpdate | null = null
+let downloadInFlight: Promise<void> | null = null
 
 function sendStatus(status: UpdaterStatus): void {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -59,6 +69,29 @@ function pickPortableAsset(assets: GitHubAsset[]): GitHubAsset | undefined {
     assets.find((asset) => /portable\.exe$/i.test(asset.name)) ??
     assets.find((asset) => /\.exe$/i.test(asset.name))
   )
+}
+
+/** Real on-disk portable .exe (not the temp extraction copy). */
+function getPortableExecutablePath(): string | null {
+  const fromEnv = process.env.PORTABLE_EXECUTABLE_FILE?.trim()
+  return fromEnv && fromEnv.length > 0 ? fromEnv : null
+}
+
+function getUpdatesDir(): string {
+  return join(getUserDataPath(), 'updates')
+}
+
+function stagingPathForVersion(version: string): string {
+  return join(getUpdatesDir(), `flux-pomo-${version}-portable.exe`)
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function fetchLatestRelease(): Promise<GitHubRelease | null> {
@@ -114,12 +147,22 @@ async function checkForPortableUpdate(): Promise<UpdateCheckResult> {
     }
   }
 
+  const previousDownloaded =
+    cachedUpdate?.version === remoteVersion ? cachedUpdate.downloadedPath : undefined
+
   cachedUpdate = {
     version: remoteVersion,
     downloadUrl,
-    releaseUrl
+    releaseUrl,
+    downloadedPath: previousDownloaded
   }
-  sendStatus({ type: 'available', version: remoteVersion })
+
+  if (previousDownloaded && (await pathExists(previousDownloaded))) {
+    sendStatus({ type: 'downloaded', version: remoteVersion })
+  } else {
+    sendStatus({ type: 'available', version: remoteVersion })
+  }
+
   return {
     updateAvailable: true,
     version: remoteVersion,
@@ -129,20 +172,197 @@ async function checkForPortableUpdate(): Promise<UpdateCheckResult> {
   }
 }
 
-async function openUpdateDownload(): Promise<void> {
-  if (!cachedUpdate) {
-    const result = await checkForPortableUpdate()
-    if (!result.updateAvailable || !result.downloadUrl) {
-      throw new Error(result.message ?? 'No update available to download.')
-    }
+async function ensureUpdateCached(): Promise<CachedUpdate> {
+  if (cachedUpdate?.downloadUrl) {
+    return cachedUpdate
   }
 
-  const url = cachedUpdate?.downloadUrl ?? RELEASES_PAGE
-  await shell.openExternal(url)
-  sendStatus({
-    type: 'available',
-    version: cachedUpdate?.version ?? app.getVersion()
+  const result = await checkForPortableUpdate()
+  if (!result.updateAvailable || !cachedUpdate?.downloadUrl) {
+    throw new Error(result.message ?? 'No update available to download.')
+  }
+
+  return cachedUpdate
+}
+
+async function downloadUpdate(): Promise<void> {
+  if (downloadInFlight) {
+    await downloadInFlight
+    return
+  }
+
+  downloadInFlight = (async () => {
+    const update = await ensureUpdateCached()
+
+    // Asset URL must be a direct binary; the release page HTML is not installable.
+    if (!/\.exe(\?|$)/i.test(update.downloadUrl)) {
+      throw new Error(
+        'No portable .exe asset on this release. Open the release page to download manually.'
+      )
+    }
+
+    const updatesDir = getUpdatesDir()
+    await mkdir(updatesDir, { recursive: true })
+
+    const finalPath = stagingPathForVersion(update.version)
+    const pendingPath = `${finalPath}.pending`
+
+    if (await pathExists(finalPath)) {
+      update.downloadedPath = finalPath
+      cachedUpdate = update
+      sendStatus({ type: 'downloaded', version: update.version })
+      return
+    }
+
+    if (await pathExists(pendingPath)) {
+      await unlink(pendingPath)
+    }
+
+    sendStatus({ type: 'downloading', version: update.version, percent: 0 })
+
+    const response = await fetch(update.downloadUrl, {
+      headers: {
+        Accept: 'application/octet-stream',
+        'User-Agent': `FluxPomo/${app.getVersion()}`
+      },
+      redirect: 'follow'
+    })
+
+    if (!response.ok || !response.body) {
+      throw new Error(`Download failed (${response.status})`)
+    }
+
+    const total = Number(response.headers.get('content-length') ?? 0)
+    let received = 0
+    let lastReported = -1
+
+    const nodeStream = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream)
+    nodeStream.on('data', (chunk: Buffer) => {
+      received += chunk.length
+      if (total > 0) {
+        const percent = Math.min(100, Math.floor((received / total) * 100))
+        if (percent !== lastReported && (percent === 100 || percent - lastReported >= 1)) {
+          lastReported = percent
+          sendStatus({ type: 'downloading', version: update.version, percent })
+        }
+      }
+    })
+
+    try {
+      await pipeline(nodeStream, createWriteStream(pendingPath))
+    } catch (error) {
+      await unlink(pendingPath).catch(() => undefined)
+      throw error
+    }
+
+    await rename(pendingPath, finalPath)
+    update.downloadedPath = finalPath
+    cachedUpdate = update
+    sendStatus({ type: 'downloaded', version: update.version })
+  })()
+
+  try {
+    await downloadInFlight
+  } finally {
+    downloadInFlight = null
+  }
+}
+
+function buildReplaceHelperCmd(options: {
+  pid: number
+  sourcePath: string
+  targetPath: string
+  helperPath: string
+}): string {
+  const { pid, sourcePath, targetPath, helperPath } = options
+  // Escape for cmd: wrap paths in quotes; caret-escape nothing else needed for typical paths.
+  const src = sourcePath.replace(/"/g, '')
+  const dst = targetPath.replace(/"/g, '')
+  const self = helperPath.replace(/"/g, '')
+
+  return `@echo off
+setlocal EnableExtensions
+set "SRC=${src}"
+set "DST=${dst}"
+set "PID=${pid}"
+
+:wait_exit
+tasklist /FI "PID eq %PID%" 2>NUL | find "%PID%" >NUL
+if not errorlevel 1 (
+  timeout /T 1 /NOBREAK >NUL
+  goto wait_exit
+)
+
+set /A TRIES=0
+:replace
+set /A TRIES+=1
+move /Y "%SRC%" "%DST%" >NUL 2>&1
+if not errorlevel 1 goto launch
+if %TRIES% GEQ 30 goto fail
+timeout /T 1 /NOBREAK >NUL
+goto replace
+
+:launch
+start "" "%DST%"
+del /F /Q "%~f0" >NUL 2>&1
+exit /B 0
+
+:fail
+del /F /Q "%SRC%" >NUL 2>&1
+del /F /Q "${self}" >NUL 2>&1
+exit /B 1
+`
+}
+
+async function installUpdate(): Promise<void> {
+  const portablePath = getPortableExecutablePath()
+  if (!portablePath) {
+    throw new Error(
+      'Cannot apply update: not running from a Windows portable build (missing PORTABLE_EXECUTABLE_FILE).'
+    )
+  }
+
+  const update = await ensureUpdateCached()
+
+  if (!update.downloadedPath || !(await pathExists(update.downloadedPath))) {
+    await downloadUpdate()
+  }
+
+  const downloadedPath = cachedUpdate?.downloadedPath
+  if (!downloadedPath || !(await pathExists(downloadedPath))) {
+    throw new Error('Update download is missing. Try downloading again.')
+  }
+
+  sendStatus({ type: 'installing', version: update.version })
+
+  const updatesDir = getUpdatesDir()
+  await mkdir(updatesDir, { recursive: true })
+  const helperPath = join(updatesDir, `apply-update-${update.version}.cmd`)
+
+  const script = buildReplaceHelperCmd({
+    pid: process.pid,
+    sourcePath: downloadedPath,
+    targetPath: portablePath,
+    helperPath
   })
+
+  await writeFile(helperPath, script, 'utf8')
+
+  // Ensure target directory exists (should already).
+  await mkdir(dirname(portablePath), { recursive: true })
+
+  const child = spawn('cmd.exe', ['/c', helperPath], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+    cwd: updatesDir
+  })
+  child.unref()
+
+  // Give the helper a moment to start before we exit.
+  setTimeout(() => {
+    quitApp()
+  }, 250)
 }
 
 export function setupAutoUpdater(): void {
@@ -167,16 +387,31 @@ export function setupAutoUpdater(): void {
       throw new Error('Updates are only available in packaged builds.')
     }
 
-    await openUpdateDownload()
+    try {
+      await downloadUpdate()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to download update'
+      sendStatus({ type: 'error', message })
+      throw error
+    }
   })
 
-  // Portable apps cannot self-replace; keep channel for API compatibility.
   ipcMain.handle(IpcChannels.updaterInstall, async (): Promise<void> => {
     if (!app.isPackaged) {
       throw new Error('Updates are only available in packaged builds.')
     }
 
-    await openUpdateDownload()
+    if (process.platform !== 'win32') {
+      throw new Error('In-app install is only supported for Windows portable builds.')
+    }
+
+    try {
+      await installUpdate()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to install update'
+      sendStatus({ type: 'error', message })
+      throw error
+    }
   })
 
   // Quiet background check after launch (packaged only).

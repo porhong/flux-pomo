@@ -48,7 +48,7 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 - Custom in-app quit confirmation
 - Fixed window size (non-resizable)
 - System tray with show / compact / quit
-- Update checks against GitHub Releases (portable download)
+- In-app portable updates from GitHub Releases (download + install & restart)
 
 ---
 
@@ -63,7 +63,7 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 | Persistence   | electron-store                               |
 | Styling       | CSS variables + app stylesheet               |
 | Packaging     | electron-builder (portable / zip / AppImage) |
-| Updates       | GitHub Releases API (portable download)      |
+| Updates       | GitHub Releases API (portable self-update)   |
 | CI            | GitHub Actions release workflow              |
 
 **Requirements:** Node.js **≥ 22.12** and npm. (Python 3 + Pillow only if you regenerate icons from the WebP logo.)
@@ -223,9 +223,14 @@ Users download the portable `.exe` from the [Releases](https://github.com/porhon
 
 ### In-app updates (portable)
 
-Packaged builds check GitHub Releases on launch and from **Settings → Updates**.
+Packaged Windows portable builds check GitHub Releases on launch and from **Settings → Updates**.
 
-When a newer version exists, **Download update** opens the portable `.exe` (or release page). Close Flux Pomo, replace the old executable with the new file, and relaunch. Silent self-replace is not supported for portable apps.
+When a newer version exists:
+
+1. **Download update** — fetches the portable `.exe` into app data (with progress)
+2. **Install and restart** — quits the app, a helper replaces the portable file you launched (`PORTABLE_EXECUTABLE_FILE`), then relaunches
+
+Dev / unpackaged builds skip updates. If the portable launcher env is missing, install reports an error instead of writing into the temp extraction folder.
 
 ---
 
