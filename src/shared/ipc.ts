@@ -22,10 +22,18 @@ export const IpcChannels = {
   settingsSet: 'settings:set',
   shortcutsStatus: 'shortcuts:status',
   sessionsList: 'sessions:list',
-  sessionsAdd: 'sessions:add'
+  sessionsAdd: 'sessions:add',
+  musicPickFolder: 'music:pick-folder',
+  musicListTracks: 'music:list-tracks'
 } as const
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels]
+
+export interface MusicTrack {
+  id: string
+  name: string
+  url: string
+}
 
 export interface AppVersions {
   electron: string
@@ -112,6 +120,10 @@ export interface FluxPomoApi {
   sessions: {
     list: (query: HistoryQuery) => Promise<HistoryResult>
     add: (session: Omit<Session, 'id'> & { id?: string }) => Promise<Session>
+  }
+  music: {
+    pickFolder: () => Promise<string | null>
+    listTracks: (folderPath: string) => Promise<MusicTrack[]>
   }
 }
 

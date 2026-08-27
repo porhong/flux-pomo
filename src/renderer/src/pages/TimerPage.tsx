@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
+import MusicController from '../components/timer/MusicController'
 import TimerControls from '../components/timer/TimerControls'
 import TimerDisplay from '../components/timer/TimerDisplay'
+import useFocusMusic from '../hooks/useFocusMusic'
+import { useMusicStore } from '../stores/musicStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useTimerStore } from '../stores/timerStore'
 
@@ -16,12 +19,28 @@ function TimerPage(): React.JSX.Element {
   const reset = useTimerStore((s) => s.reset)
   const skip = useTimerStore((s) => s.skip)
   const syncFromSettings = useTimerStore((s) => s.syncFromSettings)
+  const syncAutoPlayback = useMusicStore((s) => s.syncAutoPlayback)
+
+  useFocusMusic()
 
   useEffect(() => {
     syncFromSettings()
   }, [settings, syncFromSettings])
 
   const mood = phase === 'focus' && status === 'running' ? 'focus' : 'calm'
+
+  const onStart = (): void => {
+    start()
+    // Call from the click gesture so Chromium allows audio autoplay.
+    if (settings.musicEnabled && useTimerStore.getState().phase === 'focus') {
+      syncAutoPlayback(true)
+    }
+  }
+
+  const onPause = (): void => {
+    pause()
+    syncAutoPlayback(false)
+  }
 
   return (
     <div className="page page-timer">
@@ -40,8 +59,8 @@ function TimerPage(): React.JSX.Element {
           plannedMs={plannedMs}
           focusCountInCycle={focusCountInCycle}
           sessionsUntilLongBreak={settings.sessionsUntilLongBreak}
-          onStart={start}
-          onPause={pause}
+          onStart={onStart}
+          onPause={onPause}
         />
         <TimerControls
           onReset={reset}
@@ -49,6 +68,7 @@ function TimerPage(): React.JSX.Element {
             void skip()
           }}
         />
+        <MusicController />
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ function SettingsPage(): React.JSX.Element {
   const [savedAt, setSavedAt] = useState<string | null>(null)
   const [capturing, setCapturing] = useState(false)
   const [shortcutError, setShortcutError] = useState<string | null>(null)
+  const [trackCount, setTrackCount] = useState<number | null>(null)
 
   const current = draft ?? settings
 
@@ -46,6 +47,22 @@ function SettingsPage(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [capturing, settings])
 
+  useEffect(() => {
+    const folder = current.musicFolderPath
+    if (!folder) {
+      setTrackCount(null)
+      return
+    }
+
+    let cancelled = false
+    void window.api.music.listTracks(folder).then((tracks) => {
+      if (!cancelled) setTrackCount(tracks.length)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [current.musicFolderPath])
+
   if (!loaded) {
     return (
       <div className="page">
@@ -64,6 +81,24 @@ function SettingsPage(): React.JSX.Element {
       })
     }
 
+  const onBrowseMusicFolder = async (): Promise<void> => {
+    const folder = await window.api.music.pickFolder()
+    if (!folder) return
+    setDraft((prev) => ({
+      ...(prev ?? settings),
+      musicFolderPath: folder,
+      musicEnabled: true
+    }))
+  }
+
+  const onClearMusicFolder = (): void => {
+    setDraft((prev) => ({
+      ...(prev ?? settings),
+      musicFolderPath: null
+    }))
+    setTrackCount(null)
+  }
+
   const onSave = async (): Promise<void> => {
     await save(current)
     setDraft(null)
@@ -72,6 +107,10 @@ function SettingsPage(): React.JSX.Element {
     const status = await window.api.shortcuts.status()
     setShortcutError(status.error)
   }
+
+  const folderLabel = current.musicFolderPath
+    ? current.musicFolderPath.replace(/\\/g, '/').split('/').filter(Boolean).slice(-2).join('/')
+    : 'No folder selected'
 
   return (
     <div className="page">
@@ -151,6 +190,75 @@ function SettingsPage(): React.JSX.Element {
             }
           />
         </label>
+      </div>
+
+      <div className="panel field-grid">
+        <header className="page-header">
+          <h2 className="page-sub" style={{ color: 'var(--snow)', fontSize: 16, fontWeight: 600 }}>
+            Focus music
+          </h2>
+          <p className="page-sub">
+            Pick a local folder of audio files. Plays during running focus, pauses on break.
+          </p>
+        </header>
+
+        <label className="toggle-row">
+          <span>Enable focus music</span>
+          <input
+            type="checkbox"
+            checked={current.musicEnabled}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...(prev ?? settings),
+                musicEnabled: event.target.checked
+              }))
+            }
+          />
+        </label>
+
+        <div className="field">
+          <span className="field-label">Music folder</span>
+          <div className="shortcut-row">
+            <button
+              type="button"
+              className="shortcut-capture"
+              onClick={() => void onBrowseMusicFolder()}
+            >
+              {folderLabel}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={!current.musicFolderPath}
+              onClick={onClearMusicFolder}
+            >
+              Clear
+            </button>
+          </div>
+          <p className="settings-note">
+            Supports mp3, m4a, aac, wav, ogg, flac in the folder root
+            {trackCount != null ? ` · ${trackCount} track${trackCount === 1 ? '' : 's'}` : ''}.
+          </p>
+        </div>
+
+        <div className="field">
+          <label htmlFor="musicVolume">Volume</label>
+          <input
+            id="musicVolume"
+            className="settings-range"
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={current.musicVolume}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...(prev ?? settings),
+                musicVolume: Number(event.target.value)
+              }))
+            }
+          />
+        </div>
       </div>
 
       <div className="panel field-grid">

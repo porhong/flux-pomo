@@ -3,6 +3,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { IpcChannels, type TimerSnapshot } from '../shared/ipc'
 import { configureUserDataPath, getUserDataPath } from './paths'
 import { registerPomodoroIpc } from './pomodoro-ipc'
+import { registerMusicIpc, registerMusicProtocol, registerMusicScheme, setAllowedMusicFolder } from './music'
 import { setupAutoUpdater } from './updater'
 import {
   createMainWindow,
@@ -24,6 +25,9 @@ import { getSettings } from './store'
 
 // Pin settings/history to %APPDATA%\FluxPomo (and equivalents) before any store access.
 configureUserDataPath()
+
+// Must run before app ready so Chromium accepts the custom media scheme.
+registerMusicScheme()
 
 function registerWindowIpc(): void {
   ipcMain.handle(IpcChannels.windowMinimize, () => {
@@ -72,6 +76,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannels.ping, () => 'pong')
   registerWindowIpc()
   registerPomodoroIpc()
+  registerMusicIpc()
 }
 
 app.whenReady().then(() => {
@@ -85,12 +90,16 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  registerMusicProtocol()
   registerIpcHandlers()
   setupAutoUpdater()
   createTray()
   createMainWindow()
   prepareMiniWindow()
-  syncShortcuts(getSettings())
+
+  const settings = getSettings()
+  setAllowedMusicFolder(settings.musicFolderPath)
+  syncShortcuts(settings)
 
   app.on('activate', () => {
     const main = getMainWindow()

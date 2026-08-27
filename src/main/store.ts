@@ -50,6 +50,15 @@ function clampSettings(input: PomodoroSettings): PomodoroSettings {
   const clamp = (value: number, min: number, max: number): number =>
     Math.min(max, Math.max(min, Math.round(value)))
 
+  const folder =
+    typeof input.musicFolderPath === 'string' && input.musicFolderPath.trim()
+      ? input.musicFolderPath.trim()
+      : null
+  const volume = Number(input.musicVolume)
+  const musicVolume = Number.isFinite(volume)
+    ? Math.min(1, Math.max(0, Math.round(volume * 100) / 100))
+    : DEFAULT_SETTINGS.musicVolume
+
   return {
     focusMinutes: clamp(input.focusMinutes, 1, 180),
     shortBreakMinutes: clamp(input.shortBreakMinutes, 1, 60),
@@ -60,7 +69,10 @@ function clampSettings(input: PomodoroSettings): PomodoroSettings {
     shortcutsEnabled: Boolean(input.shortcutsEnabled),
     toggleTimerAccelerator: normalizeAccelerator(
       input.toggleTimerAccelerator ?? DEFAULT_SETTINGS.toggleTimerAccelerator
-    )
+    ),
+    musicEnabled: Boolean(input.musicEnabled),
+    musicFolderPath: folder,
+    musicVolume
   }
 }
 

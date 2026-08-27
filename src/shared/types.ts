@@ -13,6 +13,12 @@ export interface PomodoroSettings {
   shortcutsEnabled: boolean
   /** Electron accelerator, e.g. CommandOrControl+Shift+Space */
   toggleTimerAccelerator: string
+  /** Play local playlist audio during running focus sessions. */
+  musicEnabled: boolean
+  /** Absolute path to a flat folder of audio files, or null when unset. */
+  musicFolderPath: string | null
+  /** Focus music volume from 0–1. */
+  musicVolume: number
 }
 
 export interface Session {
@@ -61,7 +67,10 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
   autoStartBreaks: false,
   autoStartFocus: false,
   shortcutsEnabled: false,
-  toggleTimerAccelerator: 'CommandOrControl+Shift+Space'
+  toggleTimerAccelerator: 'CommandOrControl+Shift+Space',
+  musicEnabled: false,
+  musicFolderPath: null,
+  musicVolume: 0.5
 }
 
 /** Normalize / validate Electron accelerator strings used for timer shortcuts. */

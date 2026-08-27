@@ -3,6 +3,7 @@ import {
   IpcChannels,
   type FluxPomoApi,
   type HistoryQuery,
+  type MusicTrack,
   type PomodoroSettings,
   type Session,
   type ShortcutStatus,
@@ -87,6 +88,11 @@ const api: FluxPomoApi = {
     list: (query: HistoryQuery) => ipcRenderer.invoke(IpcChannels.sessionsList, query),
     add: (session: Omit<Session, 'id'> & { id?: string }) =>
       ipcRenderer.invoke(IpcChannels.sessionsAdd, session)
+  },
+  music: {
+    pickFolder: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.musicPickFolder),
+    listTracks: (folderPath: string): Promise<MusicTrack[]> =>
+      ipcRenderer.invoke(IpcChannels.musicListTracks, folderPath)
   }
 }
 
