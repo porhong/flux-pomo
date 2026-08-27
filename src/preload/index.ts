@@ -26,7 +26,18 @@ const api: FluxPomoApi = {
     minimize: () => ipcRenderer.invoke(IpcChannels.windowMinimize),
     restore: () => ipcRenderer.invoke(IpcChannels.windowRestore),
     close: () => ipcRenderer.invoke(IpcChannels.windowClose),
-    setMiniToast: (visible: boolean) => ipcRenderer.invoke(IpcChannels.windowMiniToast, visible)
+    setMiniIgnoreMouse: (ignore: boolean) => {
+      ipcRenderer.send(IpcChannels.windowMiniIgnoreMouse, ignore)
+    },
+    startMiniDrag: () => {
+      ipcRenderer.send(IpcChannels.windowMiniDragStart)
+    },
+    moveMiniDrag: () => {
+      ipcRenderer.send(IpcChannels.windowMiniDragMove)
+    },
+    endMiniDrag: () => {
+      ipcRenderer.send(IpcChannels.windowMiniDragEnd)
+    }
   },
   timer: {
     publish: (snapshot: TimerSnapshot) => ipcRenderer.invoke(IpcChannels.timerPublish, snapshot),

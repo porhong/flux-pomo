@@ -1,11 +1,13 @@
 import sessionStartStopUrl from '@resources/sounds/Session start stop.mp3?url'
 import restTimeUrl from '@resources/sounds/Rest time.mp3?url'
+import stopUrl from '@resources/sounds/Stop.mp3?url'
 
-type SoundId = 'session' | 'rest'
+type SoundId = 'session' | 'rest' | 'stop'
 
 const urls: Record<SoundId, string> = {
   session: sessionStartStopUrl,
-  rest: restTimeUrl
+  rest: restTimeUrl,
+  stop: stopUrl
 }
 
 const players = new Map<SoundId, HTMLAudioElement>()
@@ -34,9 +36,14 @@ function playSound(id: SoundId): void {
   }
 }
 
-/** Start or pause/stop session cue. */
+/** Session start / resume cue. */
 export function playSessionStartStop(): void {
   playSound('session')
+}
+
+/** Pause cue. */
+export function playPause(): void {
+  playSound('stop')
 }
 
 /** Break / rest phase beginning. */

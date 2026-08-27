@@ -7,13 +7,17 @@ import { setupAutoUpdater } from './updater'
 import {
   createMainWindow,
   createTray,
+  endMiniDrag,
   getLatestSnapshot,
   getMainWindow,
   minimizeToMini,
-  quitApp,
+  moveMiniDrag,
+  prepareMiniWindow,
+  requestQuit,
   restoreFromMini,
   setLatestSnapshot,
-  setMiniToastVisible
+  setMiniIgnoreMouse,
+  startMiniDrag
 } from './windows'
 import { clearShortcuts, syncShortcuts } from './shortcuts'
 import { getSettings } from './store'
@@ -30,12 +34,24 @@ function registerWindowIpc(): void {
     restoreFromMini()
   })
 
-  ipcMain.handle(IpcChannels.windowClose, () => {
-    quitApp()
+  ipcMain.handle(IpcChannels.windowClose, async () => {
+    await requestQuit()
   })
 
-  ipcMain.handle(IpcChannels.windowMiniToast, (_event, visible: boolean) => {
-    setMiniToastVisible(Boolean(visible))
+  ipcMain.on(IpcChannels.windowMiniIgnoreMouse, (event, ignore: boolean) => {
+    setMiniIgnoreMouse(event.sender, Boolean(ignore))
+  })
+
+  ipcMain.on(IpcChannels.windowMiniDragStart, (event) => {
+    startMiniDrag(event.sender)
+  })
+
+  ipcMain.on(IpcChannels.windowMiniDragMove, (event) => {
+    moveMiniDrag(event.sender)
+  })
+
+  ipcMain.on(IpcChannels.windowMiniDragEnd, (event) => {
+    endMiniDrag(event.sender)
   })
 
   ipcMain.handle(IpcChannels.timerPublish, (_event, snapshot: TimerSnapshot) => {
@@ -73,6 +89,7 @@ app.whenReady().then(() => {
   setupAutoUpdater()
   createTray()
   createMainWindow()
+  prepareMiniWindow()
   syncShortcuts(getSettings())
 
   app.on('activate', () => {

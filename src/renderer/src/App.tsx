@@ -12,6 +12,11 @@ function App(): React.JSX.Element {
   useTimerBridge(!isMini)
 
   useEffect(() => {
+    document.documentElement.classList.toggle('is-mini', isMini)
+    return () => document.documentElement.classList.remove('is-mini')
+  }, [isMini])
+
+  useEffect(() => {
     if (isMini) return
     void (async () => {
       await load()

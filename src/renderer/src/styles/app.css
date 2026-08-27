@@ -1,44 +1,116 @@
 @import './tokens.css';
 
+html.is-mini,
+html.is-mini body,
+html.is-mini #root {
+  background: transparent;
+}
+
 /* —— Compact always-on-top mini timer —— */
 .mini-root {
+  --mini-compact-w: 148px;
+  --mini-compact-h: 52px;
+  --mini-expanded-w: 268px;
+  --mini-expanded-h: 108px;
+  --mini-toast-h: 36px;
+  --mini-btn: 32px;
+  --mini-pad: 2px;
+  --mini-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --mini-move: 380ms var(--mini-ease);
   height: 100%;
-  display: grid;
-  grid-template-rows: 92px 0fr;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
   overflow: hidden;
   background: transparent;
-  transition: grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
 }
 
-.mini-root.has-toast {
-  grid-template-rows: 92px 44px;
+.mini-root.is-dragging .mini-card,
+.mini-root.is-dragging .mini-shell,
+.mini-root.is-dragging .mini-copy,
+.mini-root.is-dragging .mini-toast {
+  cursor: grabbing;
 }
 
-.mini-shell {
-  position: relative;
-  height: 92px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 12px 14px 16px;
+/* Stable expanded footprint so hover is reliable while the card animates. */
+.mini-hit {
+  pointer-events: auto;
+  width: calc(var(--mini-expanded-w) + var(--mini-pad) * 2);
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: var(--mini-pad);
+  box-sizing: border-box;
+}
+
+.mini-card {
+  width: var(--mini-compact-w);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  isolation: isolate;
+  transform-origin: right top;
+  will-change: width;
+  cursor: grab;
   background:
     radial-gradient(120% 140% at 0% 0%, rgba(141, 181, 100, 0.16), transparent 55%),
     var(--ink);
   border: 1px solid rgba(243, 239, 230, 0.1);
-  border-bottom: none;
+  border-radius: 999px;
+  box-shadow: none;
   user-select: none;
   transition:
-    border-color 220ms ease,
-    background 280ms ease;
+    width var(--mini-move),
+    border-radius 320ms var(--mini-ease),
+    border-color 220ms ease;
+}
+
+.mini-root.is-open .mini-card {
+  width: var(--mini-expanded-w);
+  border-radius: 18px;
+}
+
+.mini-root.has-toast:not(.is-open) .mini-card {
+  width: 188px;
+  border-radius: 16px;
+}
+
+.mini-root.is-open.has-toast .mini-card {
+  border-radius: 18px;
+}
+
+.mini-shell {
+  position: relative;
+  z-index: 1;
+  height: var(--mini-compact-h);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px 0 18px;
+  overflow: hidden;
+  background: transparent;
+  /* No -webkit-app-region: drag here — it swallows mousemove and breaks hover expand. */
+  cursor: grab;
+  transition:
+    height var(--mini-move),
+    gap 320ms var(--mini-ease),
+    padding 320ms var(--mini-ease);
+}
+
+.mini-root.is-open .mini-shell {
+  height: var(--mini-expanded-h);
+  gap: 10px;
+  padding: 12px;
 }
 
 .mini-accent {
   position: absolute;
-  left: 0;
-  top: 12px;
-  bottom: 12px;
+  left: 8px;
+  top: 14px;
+  bottom: 14px;
   width: 3px;
   border-radius: 999px;
   background: var(--matcha);
@@ -46,9 +118,33 @@
   transform: scaleY(0.72);
   transform-origin: center;
   transition:
+    left 280ms var(--mini-ease),
+    top 280ms var(--mini-ease),
+    bottom 280ms var(--mini-ease),
     background 240ms ease,
     opacity 240ms ease,
-    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform 280ms var(--mini-ease);
+}
+
+.mini-root.is-open .mini-accent {
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+}
+
+.mini-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  cursor: grab;
+  transition: gap 280ms var(--mini-ease);
+}
+
+.mini-root.is-open .mini-copy {
+  gap: 5px;
 }
 
 .mini-shell.status-running .mini-accent {
@@ -58,7 +154,7 @@
 
 .mini-shell.status-running.phase-shortBreak .mini-accent,
 .mini-shell.status-running.phase-longBreak .mini-accent {
-  background: var(--sage);
+  background: var(--amber);
 }
 
 .mini-shell.status-paused .mini-accent {
@@ -67,7 +163,8 @@
   transform: scaleY(0.55);
 }
 
-.mini-shell.near-end {
+.mini-card:has(.near-end),
+.mini-card:has(.mini-alert) {
   border-color: rgba(217, 118, 91, 0.45);
 }
 
@@ -78,13 +175,17 @@
   animation: miniAccentWarn 1.1s ease-in-out infinite;
 }
 
-.mini-shell.mini-alert {
-  border-color: rgba(217, 118, 91, 0.55);
-}
-
 .mini-shell.motion-start,
 .mini-shell.motion-focus {
   animation: miniActionPop 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mini-root.is-open .mini-shell.motion-start,
+.mini-root.is-open .mini-shell.motion-focus,
+.mini-root.is-open .mini-shell.motion-pause,
+.mini-root.is-open .mini-shell.motion-rest {
+  /* Avoid scale animations that clip circular controls against the card. */
+  animation: none;
 }
 
 .mini-shell.motion-pause {
@@ -99,17 +200,27 @@
   animation: miniActionWarn 640ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.mini-drag {
-  min-width: 0;
-  -webkit-app-region: drag;
-  app-region: drag;
+.mini-phase,
+.mini-meta {
+  max-height: 0;
+  margin: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition:
+    max-height 280ms var(--mini-ease),
+    opacity 220ms ease,
+    transform 280ms var(--mini-ease),
+    color 240ms ease,
+    letter-spacing 280ms ease;
 }
 
-.mini-copy {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
+.mini-root.is-open .mini-phase,
+.mini-root.is-open .mini-meta {
+  max-height: 18px;
+  opacity: 1;
+  transform: none;
 }
 
 .mini-phase {
@@ -120,7 +231,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.2;
-  transition: color 240ms ease, letter-spacing 280ms ease;
+  white-space: nowrap;
 }
 
 .mini-shell.status-running.phase-focus .mini-phase {
@@ -130,12 +241,20 @@
 .mini-time {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.05;
+  text-align: center;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
+  transition: font-size 280ms var(--mini-ease);
+}
+
+.mini-root.is-open .mini-time {
+  font-size: 26px;
+  text-align: left;
 }
 
 .mini-shell.near-end .mini-time.is-ticking {
@@ -152,29 +271,65 @@
   font-size: 11px;
   font-weight: 500;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .mini-actions {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  flex: 0 0 auto;
+  width: 0;
+  max-width: 0;
+  height: var(--mini-btn);
+  margin: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(8px);
+  pointer-events: none;
+  /* Keep controls clickable — must not participate in native window drag. */
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  transition:
+    width var(--mini-move),
+    max-width var(--mini-move),
+    opacity 220ms ease,
+    transform 320ms var(--mini-ease);
+}
+
+.mini-root.is-open .mini-actions {
+  width: 72px;
+  max-width: 72px;
+  height: var(--mini-btn);
+  overflow: visible;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-delay: 40ms, 40ms, 90ms, 40ms;
+}
+
+.mini-toggle,
+.mini-expand {
+  appearance: none;
+  width: var(--mini-btn);
+  height: var(--mini-btn);
+  min-width: var(--mini-btn);
+  min-height: var(--mini-btn);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
 
 .mini-toggle {
-  appearance: none;
   border: none;
   background: var(--matcha);
   color: var(--ink);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
   transition:
     background 140ms ease,
     transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -182,17 +337,26 @@
 
 .mini-toggle-icon {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
   animation: miniIconIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.mini-toggle:hover {
-  background: var(--matcha-soft);
-  transform: scale(1.05);
+.mini-shell.phase-shortBreak .mini-toggle,
+.mini-shell.phase-longBreak .mini-toggle {
+  background: var(--amber);
+  color: var(--ink);
+}
+
+.mini-shell.phase-shortBreak .mini-toggle:hover,
+.mini-shell.phase-longBreak .mini-toggle:hover {
+  background: var(--amber-soft);
 }
 
 .mini-toggle:active,
 .mini-toggle.is-bumped {
-  transform: scale(0.9);
+  transform: scale(0.94);
 }
 
 .mini-toggle:focus-visible {
@@ -200,24 +364,20 @@
   outline-offset: 2px;
 }
 
+.mini-toggle svg {
+  display: block;
+}
+
+/* Play triangle: tiny optical nudge (path is geometrically centered). */
 .status-idle .mini-toggle svg,
 .status-paused .mini-toggle svg {
-  transform: translateX(1px);
+  transform: translateX(0.5px);
 }
 
 .mini-expand {
-  appearance: none;
   border: 1px solid rgba(243, 239, 230, 0.14);
   background: rgba(26, 31, 39, 0.9);
   color: var(--snow);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
   transition:
     background 140ms ease,
     color 140ms ease,
@@ -229,7 +389,6 @@
   color: var(--ink);
   background: var(--matcha);
   border-color: transparent;
-  transform: scale(1.05);
 }
 
 .mini-expand:active {
@@ -242,48 +401,72 @@
 }
 
 .mini-shell.phase-shortBreak .mini-phase {
-  color: #9bb892;
+  color: var(--amber-soft);
 }
 
 .mini-shell.phase-longBreak .mini-phase {
-  color: #e4a08c;
+  color: var(--amber);
+}
+
+.mini-root:has(.phase-shortBreak) .mini-card,
+.mini-root:has(.phase-longBreak) .mini-card {
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(228, 168, 75, 0.18), transparent 55%),
+    var(--ink);
 }
 
 .mini-toast {
+  position: relative;
+  z-index: 0;
+  height: 0;
   min-height: 0;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 12px;
-  background: rgba(26, 31, 39, 0.98);
-  border: 1px solid rgba(243, 239, 230, 0.1);
-  border-top: 1px solid rgba(243, 239, 230, 0.06);
+  background: rgba(26, 31, 39, 0.72);
+  border-top: 1px solid transparent;
   color: var(--snow);
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-4px);
   pointer-events: none;
+  cursor: grab;
   transition:
-    opacity 280ms ease,
-    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    height var(--mini-move),
+    opacity 260ms ease,
+    transform 320ms var(--mini-ease),
+    border-color 220ms ease;
 }
 
 .mini-toast.is-visible {
+  height: var(--mini-toast-h);
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+  border-top-color: rgba(243, 239, 230, 0.06);
 }
 
 .mini-toast-text {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  font-size: 12px;
+  max-width: 100%;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-align: center;
   white-space: nowrap;
-  transition: opacity 220ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    opacity 220ms ease,
+    transform 320ms var(--mini-ease);
+}
+
+.mini-root.is-open .mini-toast-text {
+  font-size: 12px;
 }
 
 .mini-toast:not(.is-visible) .mini-toast-text {
@@ -316,8 +499,8 @@
 }
 
 .mini-toast.tone-rest {
-  background: linear-gradient(180deg, rgba(125, 155, 118, 0.24), rgba(26, 31, 39, 0.98));
-  color: var(--matcha-soft);
+  background: linear-gradient(180deg, rgba(228, 168, 75, 0.24), rgba(26, 31, 39, 0.98));
+  color: var(--amber-soft);
 }
 
 .mini-toast.tone-focus {
@@ -428,7 +611,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mini-root,
+  .mini-card,
   .mini-shell,
+  .mini-copy,
+  .mini-phase,
+  .mini-meta,
+  .mini-actions,
   .mini-toast,
   .mini-toast-text,
   .mini-toggle,
@@ -437,6 +625,10 @@
   .mini-accent {
     transition: none !important;
     animation: none !important;
+  }
+
+  .mini-card {
+    will-change: auto;
   }
 }
 
@@ -664,6 +856,12 @@
     background 300ms ease;
 }
 
+.timer-stage.phase-shortBreak .phase-pill,
+.timer-stage.phase-longBreak .phase-pill {
+  color: var(--ink);
+  background: var(--amber);
+}
+
 .timer-ring {
   position: relative;
   width: 260px;
@@ -701,11 +899,11 @@
 }
 
 .timer-ring.shortBreak .progress {
-  stroke: var(--sage);
+  stroke: var(--amber);
 }
 
 .timer-ring.longBreak .progress {
-  stroke: var(--coral);
+  stroke: var(--amber-soft);
 }
 
 .timer-core {
@@ -751,6 +949,16 @@
 
 .timer-toggle:hover {
   background: var(--matcha-soft);
+}
+
+.timer-stage.phase-shortBreak .timer-toggle,
+.timer-stage.phase-longBreak .timer-toggle {
+  background: var(--amber);
+}
+
+.timer-stage.phase-shortBreak .timer-toggle:hover,
+.timer-stage.phase-longBreak .timer-toggle:hover {
+  background: var(--amber-soft);
 }
 
 .timer-toggle:active {

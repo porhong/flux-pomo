@@ -6,7 +6,10 @@ export const IpcChannels = {
   windowMinimize: 'window:minimize',
   windowRestore: 'window:restore',
   windowClose: 'window:close',
-  windowMiniToast: 'window:mini-toast',
+  windowMiniIgnoreMouse: 'window:mini-ignore-mouse',
+  windowMiniDragStart: 'window:mini-drag-start',
+  windowMiniDragMove: 'window:mini-drag-move',
+  windowMiniDragEnd: 'window:mini-drag-end',
   timerPublish: 'timer:publish',
   timerState: 'timer:state',
   timerGetState: 'timer:get-state',
@@ -81,7 +84,10 @@ export interface FluxPomoApi {
     minimize: () => Promise<void>
     restore: () => Promise<void>
     close: () => Promise<void>
-    setMiniToast: (visible: boolean) => Promise<void>
+    setMiniIgnoreMouse: (ignore: boolean) => void
+    startMiniDrag: () => void
+    moveMiniDrag: () => void
+    endMiniDrag: () => void
   }
   timer: {
     publish: (snapshot: TimerSnapshot) => Promise<void>

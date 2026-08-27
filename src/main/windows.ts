@@ -1,20 +1,40 @@
-import { BrowserWindow, Menu, Tray, app, nativeImage, screen, shell } from 'electron'
+import {
+  BrowserWindow,
+  Menu,
+  Tray,
+  app,
+  dialog,
+  nativeImage,
+  screen,
+  shell,
+  type WebContents
+} from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import type { TimerSnapshot } from '../shared/ipc'
 import { IpcChannels } from '../shared/ipc'
 import icon from '../../resources/icon.png?asset'
 
-const MINI_WIDTH = 268
-const MINI_HEIGHT = 92
-const MINI_TOAST_EXTRA = 44
+/** Native window stays at expanded size; CSS animates the compact chip inside. */
+const MINI_WIDTH = 272
+const MINI_HEIGHT = 148
+/**
+ * High z-order that stays above normal apps.
+ * Avoid `screen-saver` on Windows — it can make transparent windows fail to paint.
+ */
+const MINI_TOP_LEVEL = process.platform === 'darwin' ? 'floating' : 'pop-up-menu'
 
 let mainWindow: BrowserWindow | null = null
 let miniWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let latestSnapshot: TimerSnapshot | null = null
 let isQuitting = false
-let miniToastVisible = false
+/** Cursor offset inside the window at drag start (DIP). Fixed for the whole drag. */
+let miniDragOffset: { x: number; y: number } | null = null
+let miniDragging = false
+let miniTopPinned = false
+/** True only while the user is in compact/floating mode (after Minimize). */
+let miniModeActive = false
 
 const sharedWebPreferences = {
   preload: join(__dirname, '../preload/index.js'),
@@ -55,33 +75,180 @@ function attachNavigationGuards(window: BrowserWindow): void {
   })
 }
 
-function miniHeight(): number {
-  return MINI_HEIGHT + (miniToastVisible ? MINI_TOAST_EXTRA : 0)
-}
-
 function positionMiniWindow(window: BrowserWindow): void {
+  // Don't snap back to the default corner while the user is dragging.
+  if (miniDragging) return
+
   const display = screen.getPrimaryDisplay()
   const { width, x, y } = display.workArea
   const margin = 16
-  const height = miniHeight()
   window.setBounds({
     width: MINI_WIDTH,
-    height,
+    height: MINI_HEIGHT,
     x: x + width - MINI_WIDTH - margin,
     y: y + margin
   })
 }
 
-export function setMiniToastVisible(visible: boolean): void {
-  if (miniToastVisible === visible) return
-  miniToastVisible = visible
-  if (miniWindow && !miniWindow.isDestroyed() && miniWindow.isVisible()) {
-    const bounds = miniWindow.getBounds()
-    miniWindow.setBounds({
-      ...bounds,
-      height: miniHeight()
-    })
+function stopMiniDrag(): void {
+  miniDragging = false
+  miniDragOffset = null
+}
+
+function pinMiniOnTop(window: BrowserWindow | null = miniWindow): void {
+  if (!window || window.isDestroyed()) return
+
+  try {
+    window.setAlwaysOnTop(true, MINI_TOP_LEVEL)
+  } catch {
+    window.setAlwaysOnTop(true)
   }
+
+  if (process.platform === 'darwin') {
+    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  }
+
+  // moveTop during drag can nudge position on Windows — skip it.
+  if (miniDragging) return
+
+  try {
+    window.moveTop()
+  } catch {
+    // Some platforms reject moveTop while hidden; show path will retry.
+  }
+}
+
+function ensureMiniTopListeners(): void {
+  if (miniTopPinned) return
+  miniTopPinned = true
+
+  // Re-assert only when displays change — constant blur/focus pinning can hide
+  // transparent always-on-top windows on Windows.
+  const reassert = (): void => {
+    if (!miniModeActive) return
+    if (!miniWindow || miniWindow.isDestroyed() || !miniWindow.isVisible()) return
+    pinMiniOnTop(miniWindow)
+  }
+
+  screen.on('display-metrics-changed', reassert)
+  screen.on('display-added', reassert)
+  screen.on('display-removed', reassert)
+}
+
+function showMiniWindow(mini: BrowserWindow): void {
+  // Never surface the floating card unless compact mode was requested.
+  if (!miniModeActive || mini.isDestroyed()) return
+
+  stopMiniDrag()
+  positionMiniWindow(mini)
+
+  try {
+    mini.setOpacity(1)
+  } catch {
+    // Opacity may be unsupported on some builds.
+  }
+
+  // Always call show() so a previously hidden transparent window remaps on Windows.
+  mini.show()
+  pinMiniOnTop(mini)
+  mini.setIgnoreMouseEvents(true, { forward: true })
+}
+
+function hideMiniWindow(): void {
+  stopMiniDrag()
+  if (miniWindow && !miniWindow.isDestroyed() && miniWindow.isVisible()) {
+    miniWindow.hide()
+  }
+}
+
+function whenMiniReady(mini: BrowserWindow): Promise<void> {
+  if (mini.isDestroyed()) return Promise.resolve()
+
+  const contents = mini.webContents
+  if (!contents.isLoadingMainFrame()) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (): void => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+
+    contents.once('did-finish-load', finish)
+    contents.once('dom-ready', finish)
+    setTimeout(finish, 1500)
+  })
+}
+
+/** Warm the floating window in the background — stays hidden until Minimize. */
+export function prepareMiniWindow(): void {
+  const mini = ensureMiniWindow()
+  miniModeActive = false
+  if (!mini.isDestroyed() && mini.isVisible()) {
+    mini.hide()
+  }
+}
+
+function ensureMiniWindow(): BrowserWindow {
+  if (miniWindow && !miniWindow.isDestroyed()) {
+    return miniWindow
+  }
+  return createMiniWindow()
+}
+
+export function setMiniIgnoreMouse(sender: WebContents, ignore: boolean): void {
+  if (!miniWindow || miniWindow.isDestroyed() || sender !== miniWindow.webContents) return
+  // Keep mouse active for the whole drag so release is reliable.
+  if (miniDragging && ignore) return
+  if (ignore) {
+    miniWindow.setIgnoreMouseEvents(true, { forward: true })
+    return
+  }
+  miniWindow.setIgnoreMouseEvents(false)
+}
+
+/**
+ * Move via fixed cursor→window offset each frame (both in DIP).
+ * Avoids DPI drift from accumulating deltas or polling timers.
+ */
+export function startMiniDrag(sender: WebContents): void {
+  if (!miniWindow || miniWindow.isDestroyed() || sender !== miniWindow.webContents) return
+
+  const cursor = screen.getCursorScreenPoint()
+  const { x, y } = miniWindow.getBounds()
+  miniDragging = true
+  miniDragOffset = {
+    x: cursor.x - x,
+    y: cursor.y - y
+  }
+}
+
+export function moveMiniDrag(sender: WebContents): void {
+  if (!miniDragging || !miniDragOffset || !miniWindow || miniWindow.isDestroyed()) return
+  if (sender !== miniWindow.webContents) return
+
+  const cursor = screen.getCursorScreenPoint()
+  const bounds = miniWindow.getBounds()
+  const nextX = Math.round(cursor.x - miniDragOffset.x)
+  const nextY = Math.round(cursor.y - miniDragOffset.y)
+
+  if (bounds.x === nextX && bounds.y === nextY) return
+  miniWindow.setBounds({
+    x: nextX,
+    y: nextY,
+    width: bounds.width,
+    height: bounds.height
+  })
+}
+
+export function endMiniDrag(sender?: WebContents): void {
+  if (sender && miniWindow && !miniWindow.isDestroyed() && sender !== miniWindow.webContents) {
+    return
+  }
+  stopMiniDrag()
 }
 
 export function getMainWindow(): BrowserWindow | null {
@@ -139,72 +306,115 @@ export function createMainWindow(): BrowserWindow {
 function createMiniWindow(): BrowserWindow {
   miniWindow = new BrowserWindow({
     width: MINI_WIDTH,
-    height: miniHeight(),
+    height: MINI_HEIGHT,
     show: false,
     frame: false,
+    transparent: true,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
     minimizable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    hasShadow: true,
+    focusable: true,
+    hasShadow: false,
     title: 'Flux Pomo',
-    backgroundColor: '#12151a',
-    ...(process.platform === 'linux' ? { icon } : {}),
+    backgroundColor: '#00000000',
+    ...(process.platform === 'linux' ? { icon, type: 'toolbar' as const } : {}),
     webPreferences: { ...sharedWebPreferences }
   })
 
   attachNavigationGuards(miniWindow)
   positionMiniWindow(miniWindow)
+  miniWindow.webContents.setBackgroundThrottling(false)
+  ensureMiniTopListeners()
+  miniWindow.setIgnoreMouseEvents(true, { forward: true })
 
-  miniWindow.setAlwaysOnTop(true, 'floating')
-  miniWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  // Do not auto-show on ready — floating mode is entered only via Minimize.
+  miniWindow.on('ready-to-show', () => {
+    if (!miniModeActive) return
+    if (miniWindow && !miniWindow.isDestroyed()) {
+      showMiniWindow(miniWindow)
+    }
+  })
+
+  miniWindow.on('show', () => {
+    if (!miniModeActive) {
+      miniWindow?.hide()
+      return
+    }
+    pinMiniOnTop(miniWindow)
+  })
+
+  miniWindow.on('blur', () => {
+    if (!miniModeActive) return
+    if (miniWindow && !miniWindow.isDestroyed() && miniWindow.isVisible()) {
+      try {
+        miniWindow.setAlwaysOnTop(true, MINI_TOP_LEVEL)
+      } catch {
+        miniWindow.setAlwaysOnTop(true)
+      }
+    }
+  })
 
   miniWindow.on('closed', () => {
+    stopMiniDrag()
     miniWindow = null
+    miniModeActive = false
   })
 
   loadRenderer(miniWindow, '/mini')
   return miniWindow
 }
 
-function ensureMiniWindow(): BrowserWindow {
-  if (miniWindow && !miniWindow.isDestroyed()) {
-    return miniWindow
-  }
-  return createMiniWindow()
-}
-
 export function minimizeToMini(): void {
   if (!mainWindow || mainWindow.isDestroyed()) return
 
-  miniToastVisible = false
+  stopMiniDrag()
+  miniModeActive = true
+
   const mini = ensureMiniWindow()
-  positionMiniWindow(mini)
+  const snapshot = latestSnapshot
 
-  mainWindow.setSkipTaskbar(true)
-  mainWindow.hide()
+  void (async () => {
+    // Bail if the user restored before we finished loading.
+    if (!miniModeActive) return
 
-  if (latestSnapshot) {
-    mini.webContents.send(IpcChannels.timerState, latestSnapshot)
-  }
+    await whenMiniReady(mini)
+    if (!miniModeActive || mini.isDestroyed()) return
 
-  if (mini.isVisible()) {
-    mini.focus()
-  } else {
-    mini.showInactive()
-    mini.focus()
-  }
+    if (snapshot) {
+      mini.webContents.send(IpcChannels.timerState, snapshot)
+    }
 
-  updateTrayMenu()
+    showMiniWindow(mini)
+    if (!miniModeActive) {
+      hideMiniWindow()
+      return
+    }
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setSkipTaskbar(true)
+      mainWindow.hide()
+    }
+
+    setTimeout(() => {
+      if (!miniModeActive || !miniWindow || miniWindow.isDestroyed()) return
+      if (!miniWindow.isVisible()) {
+        showMiniWindow(miniWindow)
+      } else {
+        pinMiniOnTop(miniWindow)
+      }
+      updateTrayMenu()
+    }, 80)
+
+    updateTrayMenu()
+  })()
 }
 
 export function restoreFromMini(): void {
-  miniToastVisible = false
-  if (miniWindow && !miniWindow.isDestroyed()) {
-    miniWindow.hide()
-  }
+  miniModeActive = false
+  hideMiniWindow()
 
   if (!mainWindow || mainWindow.isDestroyed()) {
     createMainWindow()
@@ -219,6 +429,8 @@ export function restoreFromMini(): void {
 
 export function quitApp(): void {
   isQuitting = true
+  miniModeActive = false
+  stopMiniDrag()
   if (miniWindow && !miniWindow.isDestroyed()) {
     miniWindow.destroy()
     miniWindow = null
@@ -228,10 +440,42 @@ export function quitApp(): void {
   app.quit()
 }
 
+/** Ask before quitting — used by the window close button and tray Quit. */
+export async function requestQuit(): Promise<boolean> {
+  const parent =
+    mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()
+      ? mainWindow
+      : miniWindow && !miniWindow.isDestroyed() && miniWindow.isVisible()
+        ? miniWindow
+        : null
+
+  const options: Electron.MessageBoxOptions = {
+    type: 'question',
+    buttons: ['Cancel', 'Quit'],
+    defaultId: 1,
+    cancelId: 0,
+    noLink: true,
+    title: 'Quit Flux Pomo',
+    message: 'Quit Flux Pomo?',
+    detail: 'The timer will stop and the app will close completely.'
+  }
+
+  const result = parent
+    ? await dialog.showMessageBox(parent, options)
+    : await dialog.showMessageBox(options)
+
+  if (result.response !== 1) {
+    return false
+  }
+
+  quitApp()
+  return true
+}
+
 function updateTrayMenu(): void {
   if (!tray) return
 
-  const isCompact = Boolean(mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible())
+  const isCompact = miniModeActive
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -244,7 +488,9 @@ function updateTrayMenu(): void {
     { type: 'separator' },
     {
       label: 'Quit',
-      click: () => quitApp()
+      click: () => {
+        void requestQuit()
+      }
     }
   ])
 

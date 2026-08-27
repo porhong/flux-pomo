@@ -8,6 +8,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 
+if (window.location.hash.replace(/^#/, '') === '/mini') {
+  document.documentElement.classList.add('is-mini')
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

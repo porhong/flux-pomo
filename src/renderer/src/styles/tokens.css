@@ -4,9 +4,12 @@
   --ink-soft: #242b36;
   --fog: #9aa3b2;
   --snow: #f3efe6;
-  /* Smooth Matcha primary */
+  /* Smooth Matcha primary (focus) */
   --matcha: #8db564;
   --matcha-soft: #c7e8b8;
+  /* Smooth Amber (breaks) */
+  --amber: #e4a84b;
+  --amber-soft: #f2d08a;
   --sage: #5f7a52;
   --coral: #d9765b;
   --ring-track: rgba(243, 239, 230, 0.12);

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { SessionType } from '../../../shared/types'
-import { playRestTime, playSessionStartStop } from '../lib/sounds'
+import { playPause, playRestTime, playSessionStartStop } from '../lib/sounds'
 import { minutesToMs, phaseLabel } from '../lib/time'
 import { useSettingsStore } from './settingsStore'
 
@@ -131,7 +131,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       remainingMs: Math.max(0, endsAt - Date.now()),
       endsAt: null
     })
-    playSessionStartStop()
+    playPause()
   },
 
   reset: () => {

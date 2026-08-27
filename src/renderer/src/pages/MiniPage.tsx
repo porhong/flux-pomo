@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FocusEvent, type PointerEvent } from 'react'
 import type { TimerSnapshot } from '../../../shared/ipc'
 import { formatClock, phaseLabel } from '../lib/time'
 
@@ -13,9 +13,13 @@ const EMPTY_SNAPSHOT: TimerSnapshot = {
 }
 
 const WARN_MS = 60_000
-const ACTION_TOAST_MS = 2800
+const TOAST_DISPLAY_MS = 5000
 const MOTION_MS = 620
 const TOAST_TRANSITION_MS = 320
+const CLOSE_DELAY_MS = 140
+const IGNORE_AFTER_CLOSE_MS = 380
+/** Pixels of pointer travel before a press becomes a window drag. */
+const DRAG_THRESHOLD_PX = 5
 
 type ToastTone = 'warn' | 'rest' | 'focus' | 'info'
 type ShellMotion = 'none' | 'start' | 'pause' | 'rest' | 'focus' | 'warn'
@@ -24,7 +28,6 @@ interface MiniToast {
   id: string
   message: string
   tone: ToastTone
-  sticky: boolean
 }
 
 function ExpandIcon(): React.JSX.Element {
@@ -45,7 +48,7 @@ function ExpandIcon(): React.JSX.Element {
 function PlayIcon(): React.JSX.Element {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 5.5v13l11-6.5L8 5.5z" fill="currentColor" />
+      <path d="M7 6v12l10-6L7 6z" fill="currentColor" />
     </svg>
   )
 }
@@ -90,36 +93,34 @@ function warningToast(snapshot: TimerSnapshot, remainingMs: number): MiniToast |
     return {
       id: 'warn-rest',
       message: 'Rest coming up',
-      tone: 'warn',
-      sticky: true
+      tone: 'warn'
     }
   }
 
   return {
     id: 'warn-focus',
     message: 'Break ending soon',
-    tone: 'warn',
-    sticky: true
+    tone: 'warn'
   }
 }
 
 function actionToastFromTransition(prev: TimerSnapshot, next: TimerSnapshot): MiniToast | null {
   if (prev.phase !== next.phase) {
     if (next.phase === 'shortBreak' || next.phase === 'longBreak') {
-      return { id: `rest-${Date.now()}`, message: 'Time to rest', tone: 'rest', sticky: false }
+      return { id: `rest-${Date.now()}`, message: 'Time to rest', tone: 'rest' }
     }
-    return { id: `focus-${Date.now()}`, message: 'Back to focus', tone: 'focus', sticky: false }
+    return { id: `focus-${Date.now()}`, message: 'Back to focus', tone: 'focus' }
   }
 
   if (prev.status !== 'running' && next.status === 'running') {
     if (next.phase === 'focus') {
-      return { id: `start-${Date.now()}`, message: 'Focus started', tone: 'focus', sticky: false }
+      return { id: `start-${Date.now()}`, message: 'Focus started', tone: 'focus' }
     }
-    return { id: `break-${Date.now()}`, message: 'Rest started', tone: 'rest', sticky: false }
+    return { id: `break-${Date.now()}`, message: 'Rest started', tone: 'rest' }
   }
 
   if (prev.status === 'running' && next.status === 'paused') {
-    return { id: `pause-${Date.now()}`, message: 'Timer paused', tone: 'info', sticky: false }
+    return { id: `pause-${Date.now()}`, message: 'Timer paused', tone: 'info' }
   }
 
   return null
@@ -142,6 +143,19 @@ function MiniPage(): React.JSX.Element {
   const [motion, setMotion] = useState<ShellMotion>('none')
   const [timePulse, setTimePulse] = useState(false)
   const [toggleBump, setToggleBump] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const hitRef = useRef<HTMLDivElement | null>(null)
+  const ignoreMouseRef = useRef(true)
+  const hoveredRef = useRef(false)
+  const focusedRef = useRef(false)
+  const draggingRef = useRef(false)
+  const dragArmedRef = useRef(false)
+  const dragOriginRef = useRef({ x: 0, y: 0 })
+  const closeTimerRef = useRef<number | null>(null)
+  const ignoreTimerRef = useRef<number | null>(null)
+  const lastPointerRef = useRef({ x: -1, y: -1 })
   const actionTimerRef = useRef<number | null>(null)
   const motionTimerRef = useRef<number | null>(null)
   const toastTimerRef = useRef<number | null>(null)
@@ -156,6 +170,202 @@ function MiniPage(): React.JSX.Element {
   useEffect(() => {
     toastOpenRef.current = toastOpen
   }, [toastOpen])
+
+  useEffect(() => {
+    hoveredRef.current = hovered
+  }, [hovered])
+
+  useEffect(() => {
+    focusedRef.current = focused
+  }, [focused])
+
+  useEffect(() => {
+    draggingRef.current = dragging
+  }, [dragging])
+
+  const setIgnoreMouse = (ignore: boolean): void => {
+    if (ignoreMouseRef.current === ignore) return
+    ignoreMouseRef.current = ignore
+    window.api.window.setMiniIgnoreMouse(ignore)
+  }
+
+  const clearCloseTimer = (): void => {
+    if (closeTimerRef.current != null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  const clearIgnoreTimer = (): void => {
+    if (ignoreTimerRef.current != null) {
+      window.clearTimeout(ignoreTimerRef.current)
+      ignoreTimerRef.current = null
+    }
+  }
+
+  const isOverCard = (clientX: number, clientY: number): boolean => {
+    const el = document.elementFromPoint(clientX, clientY)
+    return Boolean(el?.closest('.mini-card'))
+  }
+
+  const openPanel = (): void => {
+    clearCloseTimer()
+    clearIgnoreTimer()
+    setIgnoreMouse(false)
+    if (!hoveredRef.current) setHovered(true)
+  }
+
+  const collapsePanel = (): void => {
+    clearCloseTimer()
+    clearIgnoreTimer()
+    setHovered(false)
+    setFocused(false)
+
+    const active = document.activeElement
+    if (active instanceof HTMLElement && hitRef.current?.contains(active)) {
+      active.blur()
+    }
+
+    ignoreTimerRef.current = window.setTimeout(() => {
+      if (!hoveredRef.current && !focusedRef.current) {
+        setIgnoreMouse(true)
+      }
+      ignoreTimerRef.current = null
+    }, IGNORE_AFTER_CLOSE_MS)
+  }
+
+  const scheduleClose = (): void => {
+    if (draggingRef.current) return
+    if (closeTimerRef.current != null) return
+
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null
+
+      if (draggingRef.current) return
+
+      // Pointer may have returned during the delay — keep expanded only over the card.
+      if (isOverCard(lastPointerRef.current.x, lastPointerRef.current.y)) {
+        openPanel()
+        return
+      }
+
+      collapsePanel()
+    }, CLOSE_DELAY_MS)
+  }
+
+  const finishDrag = (): void => {
+    if (!dragArmedRef.current && !draggingRef.current) return
+    dragArmedRef.current = false
+    if (draggingRef.current) {
+      window.api.window.endMiniDrag()
+      setDragging(false)
+      draggingRef.current = false
+    }
+  }
+
+  const onDragPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
+    if (event.button !== 0) return
+    if ((event.target as HTMLElement | null)?.closest('button')) return
+
+    openPanel()
+    dragArmedRef.current = true
+    dragOriginRef.current = { x: event.clientX, y: event.clientY }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const onDragPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
+    if (!dragArmedRef.current) return
+
+    const dx = event.clientX - dragOriginRef.current.x
+    const dy = event.clientY - dragOriginRef.current.y
+
+    if (!draggingRef.current) {
+      if (dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) return
+      clearCloseTimer()
+      setIgnoreMouse(false)
+      setDragging(true)
+      draggingRef.current = true
+      window.api.window.startMiniDrag()
+    }
+
+    window.api.window.moveMiniDrag()
+  }
+
+  const onDragPointerUp = (event: PointerEvent<HTMLDivElement>): void => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    finishDrag()
+
+    if (!isOverCard(event.clientX, event.clientY)) {
+      scheduleClose()
+    }
+  }
+
+  const onCardBlur = (event: FocusEvent<HTMLDivElement>): void => {
+    const next = event.relatedTarget
+    if (next instanceof Node && event.currentTarget.contains(next)) return
+    setFocused(false)
+    if (!isOverCard(lastPointerRef.current.x, lastPointerRef.current.y)) {
+      scheduleClose()
+    }
+  }
+
+  useEffect(() => {
+    const syncPointerState = (clientX: number, clientY: number): void => {
+      lastPointerRef.current = { x: clientX, y: clientY }
+
+      if (draggingRef.current) return
+
+      if (isOverCard(clientX, clientY)) {
+        openPanel()
+        return
+      }
+
+      // Left the visible card — always collapse (don't stay open from leftover focus).
+      if (hoveredRef.current || focusedRef.current) {
+        scheduleClose()
+        return
+      }
+
+      if (!ignoreMouseRef.current && ignoreTimerRef.current == null) {
+        setIgnoreMouse(true)
+      }
+    }
+
+    const onMouseMove = (event: MouseEvent): void => {
+      syncPointerState(event.clientX, event.clientY)
+    }
+
+    const onWindowLeave = (): void => {
+      lastPointerRef.current = { x: -1, y: -1 }
+      if (draggingRef.current) return
+      if (hoveredRef.current || focusedRef.current || !ignoreMouseRef.current) {
+        scheduleClose()
+      }
+    }
+
+    const onBlur = (): void => {
+      if (draggingRef.current) {
+        finishDrag()
+      }
+      if (hoveredRef.current || focusedRef.current) scheduleClose()
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('blur', onBlur)
+    document.documentElement.addEventListener('mouseleave', onWindowLeave)
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('blur', onBlur)
+      document.documentElement.removeEventListener('mouseleave', onWindowLeave)
+      clearCloseTimer()
+      clearIgnoreTimer()
+    }
+    // Hover sync is ref-driven; listeners only need to bind once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const clearActionTimer = (): void => {
     if (actionTimerRef.current != null) {
@@ -172,6 +382,7 @@ function MiniPage(): React.JSX.Element {
   }
 
   const hideToast = (): void => {
+    clearActionTimer()
     clearToastTimer()
     setToastOpen(false)
     toastTimerRef.current = window.setTimeout(() => {
@@ -181,12 +392,20 @@ function MiniPage(): React.JSX.Element {
   }
 
   const showToast = (next: MiniToast): void => {
+    // Same message already visible — keep the existing 5s window.
     if (toastRef.current?.id === next.id && toastOpenRef.current) return
+
+    clearActionTimer()
     clearToastTimer()
     setToast(next)
     window.requestAnimationFrame(() => {
       setToastOpen(true)
     })
+
+    actionTimerRef.current = window.setTimeout(() => {
+      actionTimerRef.current = null
+      hideToast()
+    }, TOAST_DISPLAY_MS)
   }
 
   const triggerMotion = (next: ShellMotion): void => {
@@ -203,25 +422,11 @@ function MiniPage(): React.JSX.Element {
     })
   }
 
-  const applyToast = (next: MiniToast | null): void => {
-    if (next) {
-      showToast(next)
-      return
-    }
-    if (toast) hideToast()
-  }
-
   const showActionToast = (next: MiniToast): void => {
-    clearActionTimer()
     showToast(next)
     if (next.tone !== 'warn') {
       triggerMotion(motionFromToast(next))
     }
-    actionTimerRef.current = window.setTimeout(() => {
-      actionTimerRef.current = null
-      const current = snapshotRef.current
-      applyToast(warningToast(current, remainingFrom(current)))
-    }, ACTION_TOAST_MS)
   }
 
   const commit = (next: TimerSnapshot): void => {
@@ -233,11 +438,6 @@ function MiniPage(): React.JSX.Element {
     const action = actionToastFromTransition(prev, next)
     if (action) {
       showActionToast(action)
-      return
-    }
-
-    if (actionTimerRef.current == null) {
-      applyToast(warningToast(next, remainingFrom(next)))
     }
   }
 
@@ -257,6 +457,8 @@ function MiniPage(): React.JSX.Element {
       unsubscribe()
       clearActionTimer()
       clearToastTimer()
+      clearCloseTimer()
+      clearIgnoreTimer()
       if (motionTimerRef.current != null) window.clearTimeout(motionTimerRef.current)
     }
   }, [])
@@ -279,31 +481,27 @@ function MiniPage(): React.JSX.Element {
         return prevSec !== nextSec ? nextMs : prev
       })
 
-      if (actionTimerRef.current == null) {
-        const nextWarn = warningToast(current, nextMs)
-        if (!nextWarn) {
-          warnedRef.current = false
-          if (toastRef.current?.sticky && toastOpenRef.current) {
-            hideToast()
-          }
-        } else {
-          if (!warnedRef.current) {
-            warnedRef.current = true
-            triggerMotion('warn')
-          }
-          showToast(nextWarn)
-        }
+      if (actionTimerRef.current != null) return
+
+      const nextWarn = warningToast(current, nextMs)
+      if (!nextWarn) {
+        warnedRef.current = false
+        return
+      }
+
+      // Show the near-end warning once for 5s, not for the whole final minute.
+      if (!warnedRef.current) {
+        warnedRef.current = true
+        triggerMotion('warn')
+        showToast(nextWarn)
       }
     }, 200)
 
     return () => window.clearInterval(id)
   }, [])
 
-  useEffect(() => {
-    void window.api.window.setMiniToast(Boolean(toast))
-  }, [toast])
-
   const nearEnd = isNearEnd(snapshot, displayMs)
+  const isOpen = hovered || focused
   const isRunning = snapshot.status === 'running'
   const toggleLabel = isRunning ? 'Pause' : snapshot.status === 'paused' ? 'Resume' : 'Start'
   const cycle =
@@ -342,51 +540,79 @@ function MiniPage(): React.JSX.Element {
     .join(' ')
 
   return (
-    <div className={`mini-root${toast ? ' has-toast' : ''}`}>
-      <div className={shellClass}>
-        <div className="mini-accent" aria-hidden />
-        <div className="mini-drag">
-          <div className="mini-copy">
-            <p className="mini-phase">{phaseLabel(snapshot.phase)}</p>
-            <p className={`mini-time${timePulse ? ' is-ticking' : ''}`}>{formatClock(displayMs)}</p>
-            <p className="mini-meta">
-              Cycle {cycle}/{snapshot.sessionsUntilLongBreak}
-            </p>
+    <div
+      className={`mini-root${isOpen ? ' is-open' : ''}${toast ? ' has-toast' : ''}${dragging ? ' is-dragging' : ''}`}
+    >
+      <div
+        ref={hitRef}
+        className="mini-hit"
+        data-mini-hit="true"
+        onFocusCapture={() => {
+          openPanel()
+          setFocused(true)
+        }}
+        onBlurCapture={onCardBlur}
+      >
+        <div
+          className="mini-card"
+          role="toolbar"
+          aria-label={`Flux Pomo, ${phaseLabel(snapshot.phase)}, ${formatClock(displayMs)}`}
+          aria-expanded={isOpen}
+          onPointerDown={onDragPointerDown}
+          onPointerMove={onDragPointerMove}
+          onPointerUp={onDragPointerUp}
+          onPointerCancel={onDragPointerUp}
+        >
+          <div className={shellClass}>
+            <div className="mini-accent" aria-hidden />
+            <div className="mini-copy">
+              <p className="mini-phase">{phaseLabel(snapshot.phase)}</p>
+              <p className={`mini-time${timePulse ? ' is-ticking' : ''}`}>
+                {formatClock(displayMs)}
+              </p>
+              <p className="mini-meta">
+                Cycle {cycle}/{snapshot.sessionsUntilLongBreak}
+              </p>
+            </div>
+            <div className="mini-actions" aria-hidden={!isOpen}>
+              <button
+                type="button"
+                className={`mini-toggle${toggleBump ? ' is-bumped' : ''}`}
+                aria-label={toggleLabel}
+                tabIndex={isOpen ? 0 : -1}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={onToggle}
+              >
+                <span className="mini-toggle-icon" key={isRunning ? 'pause' : 'play'}>
+                  {isRunning ? <PauseIcon /> : <PlayIcon />}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="mini-expand"
+                aria-label="Open Flux Pomo"
+                tabIndex={isOpen ? 0 : -1}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => void window.api.window.restore()}
+              >
+                <ExpandIcon />
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={`mini-toast tone-${toast?.tone ?? 'info'}${toastOpen ? ' is-visible' : ''}`}
+            role="status"
+            aria-live="polite"
+          >
+            {toast ? (
+              <span className="mini-toast-text" key={toast.id}>
+                {toast.tone === 'warn' ? <span className="mini-toast-dot" aria-hidden /> : null}
+                {toast.message}
+              </span>
+            ) : null}
           </div>
         </div>
-        <div className="mini-actions">
-          <button
-            type="button"
-            className={`mini-toggle${toggleBump ? ' is-bumped' : ''}`}
-            aria-label={toggleLabel}
-            onClick={onToggle}
-          >
-            <span className="mini-toggle-icon" key={isRunning ? 'pause' : 'play'}>
-              {isRunning ? <PauseIcon /> : <PlayIcon />}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="mini-expand"
-            aria-label="Expand Flux Pomo"
-            onClick={() => void window.api.window.restore()}
-          >
-            <ExpandIcon />
-          </button>
-        </div>
-      </div>
-
-      <div
-        className={`mini-toast tone-${toast?.tone ?? 'info'}${toastOpen ? ' is-visible' : ''}`}
-        role="status"
-        aria-live="polite"
-      >
-        {toast ? (
-          <span className="mini-toast-text" key={toast.id}>
-            {toast.tone === 'warn' ? <span className="mini-toast-dot" aria-hidden /> : null}
-            {toast.message}
-          </span>
-        ) : null}
       </div>
     </div>
   )
