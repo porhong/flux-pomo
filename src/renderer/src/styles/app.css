@@ -640,7 +640,8 @@ html.is-mini #root {
 
 .app-main {
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding-top: 0;
   display: flex;
   flex-direction: column;
@@ -649,13 +650,19 @@ html.is-mini #root {
 .app-main > .page-transition {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .app-main > .page-transition > .page {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
 }
 
 .page-transition-fade {
@@ -673,33 +680,33 @@ html.is-mini #root {
 @keyframes pageEnterFade {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes pageEnterLeft {
   from {
     opacity: 0;
-    transform: translateX(22px);
+    transform: translate3d(16px, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes pageEnterRight {
   from {
     opacity: 0;
-    transform: translateX(-22px);
+    transform: translate3d(-16px, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -1826,192 +1833,164 @@ html.is-mini #root {
 
 .period-label-text {
   display: inline-block;
-  animation: historyLabelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: historyLabelIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .history-stage {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  transition: opacity 180ms ease;
+  min-width: 0;
+  width: 100%;
 }
 
-.history-stage.is-pending {
-  opacity: 0.55;
-  pointer-events: none;
+.history-viewport {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .history-pane {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
+  width: 100%;
 }
 
-.history-pane-fade {
-  animation: historyFadeIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.history-pane-leave {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.history-pane-left {
-  animation: historySlideLeft 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.history-pane-enter {
+  position: relative;
+  z-index: 2;
 }
 
-.history-pane-right {
-  animation: historySlideRight 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.history-pane-leave-left {
+  animation: historyLeaveLeft 400ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.history-pane-leave-right {
+  animation: historyLeaveRight 400ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.history-pane-leave-fade {
+  animation: historyLeaveFade 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.history-pane-enter-left {
+  animation: historyEnterLeft 400ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.history-pane-enter-right {
+  animation: historyEnterRight 400ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.history-pane-enter-fade {
+  animation: historyEnterFade 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 .history-sessions {
   margin-top: 16px;
 }
 
-.history-pane .summary-card {
-  animation: historyCardIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+@keyframes historyLeaveLeft {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-36%, 0, 0);
+  }
 }
 
-.history-pane .summary-card:nth-child(2) {
-  animation-delay: 40ms;
+@keyframes historyLeaveRight {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(36%, 0, 0);
+  }
 }
 
-.history-pane .summary-card:nth-child(3) {
-  animation-delay: 80ms;
+@keyframes historyLeaveFade {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0);
+  }
 }
 
-.history-pane .bar-col {
-  animation: historyBarIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.history-pane .bar-col:nth-child(1) {
-  animation-delay: 30ms;
-}
-.history-pane .bar-col:nth-child(2) {
-  animation-delay: 60ms;
-}
-.history-pane .bar-col:nth-child(3) {
-  animation-delay: 90ms;
-}
-.history-pane .bar-col:nth-child(4) {
-  animation-delay: 120ms;
-}
-.history-pane .bar-col:nth-child(5) {
-  animation-delay: 150ms;
-}
-.history-pane .bar-col:nth-child(6) {
-  animation-delay: 180ms;
-}
-.history-pane .bar-col:nth-child(7) {
-  animation-delay: 210ms;
-}
-
-.history-pane .month-grid {
-  animation: historyFadeIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.history-pane .session-item {
-  animation: historyCardIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.history-pane .session-item:nth-child(1) {
-  animation-delay: 40ms;
-}
-.history-pane .session-item:nth-child(2) {
-  animation-delay: 70ms;
-}
-.history-pane .session-item:nth-child(3) {
-  animation-delay: 100ms;
-}
-.history-pane .session-item:nth-child(4) {
-  animation-delay: 130ms;
-}
-.history-pane .session-item:nth-child(5) {
-  animation-delay: 160ms;
-}
-.history-pane .session-item:nth-child(6) {
-  animation-delay: 190ms;
-}
-
-@keyframes historyFadeIn {
+@keyframes historyEnterLeft {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translate3d(36%, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
-@keyframes historySlideLeft {
+@keyframes historyEnterRight {
   from {
     opacity: 0;
-    transform: translateX(18px);
+    transform: translate3d(-36%, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
-@keyframes historySlideRight {
+@keyframes historyEnterFade {
   from {
     opacity: 0;
-    transform: translateX(-18px);
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes historyLabelIn {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    opacity: 0.4;
+    transform: translate3d(0, 5px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes historyCardIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes historyBarIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scaleY(0.72);
-    transform-origin: bottom center;
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-    transform-origin: bottom center;
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .history-stage,
-  .history-stage.is-pending {
-    transition: none;
-    opacity: 1;
+  .period-label-text,
+  .history-pane-leave-left,
+  .history-pane-leave-right,
+  .history-pane-leave-fade,
+  .history-pane-enter-left,
+  .history-pane-enter-right,
+  .history-pane-enter-fade {
+    animation: none !important;
   }
 
-  .period-label-text,
-  .history-pane-fade,
-  .history-pane-left,
-  .history-pane-right,
-  .history-pane .summary-card,
-  .history-pane .bar-col,
-  .history-pane .month-grid,
-  .history-pane .session-item {
-    animation: none !important;
+  .history-pane-leave {
+    display: none;
   }
 }
 

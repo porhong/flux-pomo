@@ -15,16 +15,66 @@ import {
 
 type HistoryMotion = 'fade' | 'left' | 'right'
 
+const VIEW_ORDER: HistoryView[] = ['day', 'week', 'month']
+
+function motionForViewChange(from: HistoryView, to: HistoryView): HistoryMotion {
+  const fromIndex = VIEW_ORDER.indexOf(from)
+  const toIndex = VIEW_ORDER.indexOf(to)
+  if (toIndex > fromIndex) return 'left'
+  if (toIndex < fromIndex) return 'right'
+  return 'fade'
+}
+
+/** Slide toward “now”: past → current slides left, future → current slides right. */
+function motionForCurrentPeriod(view: HistoryView, anchorDate: string): HistoryMotion {
+  const current = normalizeAnchor(view, todayIsoDate())
+  const anchor = normalizeAnchor(view, anchorDate)
+  if (anchor < current) return 'left'
+  if (anchor > current) return 'right'
+  return 'fade'
+}
+
+interface HistoryFrame {
+  result: HistoryResult
+  view: HistoryView
+}
+
+interface LeavingFrame extends HistoryFrame {
+  motion: HistoryMotion
+}
+
+function HistoryBody({ result, view }: HistoryFrame): React.JSX.Element {
+  return (
+    <>
+      <div className="panel">
+        <SummaryStrip summary={result.summary} />
+      </div>
+      <div className="panel">
+        <WeekMonthChart view={view} days={result.days} rangeStart={result.rangeStart} />
+        <div className={view === 'day' ? undefined : 'history-sessions'}>
+          <SessionList sessions={result.sessions} />
+        </div>
+      </div>
+    </>
+  )
+}
+
 function HistoryPage(): React.JSX.Element {
   const [view, setView] = useState<HistoryView>('day')
   const [anchorDate, setAnchorDate] = useState(todayIsoDate)
-  const [result, setResult] = useState<HistoryResult | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [motion, setMotion] = useState<HistoryMotion>('fade')
-  const [contentTick, setContentTick] = useState(0)
+  const [frame, setFrame] = useState<HistoryFrame | null>(null)
+  const [leaving, setLeaving] = useState<LeavingFrame | null>(null)
+  const [enterMotion, setEnterMotion] = useState<HistoryMotion | null>(null)
+  const [busy, setBusy] = useState(true)
   const pendingMotion = useRef<HistoryMotion>('fade')
+  const frameRef = useRef<HistoryFrame | null>(null)
+  const enterClearTimer = useRef<number | null>(null)
 
   const onCurrentPeriod = isCurrentPeriod(view, anchorDate)
+
+  useEffect(() => {
+    frameRef.current = frame
+  }, [frame])
 
   useEffect(() => {
     let cancelled = false
@@ -32,10 +82,27 @@ function HistoryPage(): React.JSX.Element {
 
     void window.api.sessions.list(query).then((data) => {
       if (cancelled) return
-      setMotion(pendingMotion.current)
-      setResult(data)
-      setContentTick((tick) => tick + 1)
-      setLoading(false)
+
+      if (enterClearTimer.current != null) {
+        window.clearTimeout(enterClearTimer.current)
+        enterClearTimer.current = null
+      }
+
+      const motion = pendingMotion.current
+      const previous = frameRef.current
+
+      if (previous) {
+        setLeaving({ ...previous, motion })
+      }
+
+      setFrame({ result: data, view })
+      setEnterMotion(motion)
+      setBusy(false)
+
+      enterClearTimer.current = window.setTimeout(() => {
+        setEnterMotion(null)
+        enterClearTimer.current = null
+      }, 420)
     })
 
     return () => {
@@ -43,21 +110,30 @@ function HistoryPage(): React.JSX.Element {
     }
   }, [view, anchorDate])
 
+  useEffect(() => {
+    return () => {
+      if (enterClearTimer.current != null) {
+        window.clearTimeout(enterClearTimer.current)
+      }
+    }
+  }, [])
+
   const beginNav = (nextMotion: HistoryMotion, update: () => void): void => {
+    if (busy) return
     pendingMotion.current = nextMotion
-    setLoading(true)
+    setBusy(true)
     update()
   }
 
   const goToCurrentPeriod = (): void => {
     if (onCurrentPeriod) return
-    beginNav('fade', () => {
+    beginNav(motionForCurrentPeriod(view, anchorDate), () => {
       setAnchorDate(normalizeAnchor(view, todayIsoDate()))
     })
   }
 
   const label =
-    result != null ? periodLabel(view, result.rangeStart, result.rangeEnd) : '…'
+    frame != null ? periodLabel(frame.view, frame.result.rangeStart, frame.result.rangeEnd) : '…'
 
   return (
     <div className="page">
@@ -70,7 +146,8 @@ function HistoryPage(): React.JSX.Element {
         <ViewTabs
           view={view}
           onChange={(next) => {
-            beginNav('fade', () => {
+            if (next === view) return
+            beginNav(motionForViewChange(view, next), () => {
               setView(next)
               setAnchorDate(normalizeAnchor(next, anchorDate))
             })
@@ -80,7 +157,7 @@ function HistoryPage(): React.JSX.Element {
           <button
             type="button"
             className="period-current-btn"
-            disabled={onCurrentPeriod}
+            disabled={onCurrentPeriod || busy}
             aria-label={`Go to ${currentPeriodButtonLabel(view).toLowerCase()}`}
             onClick={goToCurrentPeriod}
           >
@@ -90,6 +167,7 @@ function HistoryPage(): React.JSX.Element {
             type="button"
             className="period-nav-btn"
             aria-label="Previous period"
+            disabled={busy}
             onClick={() => {
               beginNav('right', () => {
                 setAnchorDate((d) => shiftAnchor(view, d, -1))
@@ -99,7 +177,7 @@ function HistoryPage(): React.JSX.Element {
             ‹
           </button>
           <span className="period-label" aria-live="polite">
-            <span key={`${label}-${contentTick}`} className="period-label-text">
+            <span key={label} className="period-label-text">
               {label}
             </span>
           </span>
@@ -107,6 +185,7 @@ function HistoryPage(): React.JSX.Element {
             type="button"
             className="period-nav-btn"
             aria-label="Next period"
+            disabled={busy}
             onClick={() => {
               beginNav('left', () => {
                 setAnchorDate((d) => shiftAnchor(view, d, 1))
@@ -118,24 +197,28 @@ function HistoryPage(): React.JSX.Element {
         </div>
       </div>
 
-      <div
-        className={`history-stage${loading ? ' is-pending' : ''}`}
-        aria-busy={loading}
-      >
-        {result ? (
-          <div
-            key={`${view}-${result.rangeStart}-${contentTick}`}
-            className={`history-pane history-pane-${motion}`}
-          >
-            <div className="panel">
-              <SummaryStrip summary={result.summary} />
-            </div>
-
-            <div className="panel">
-              <WeekMonthChart view={view} days={result.days} rangeStart={result.rangeStart} />
-              <div className={view === 'day' ? undefined : 'history-sessions'}>
-                <SessionList sessions={result.sessions} />
+      <div className="history-stage" aria-busy={busy}>
+        {frame ? (
+          <div className="history-viewport">
+            {leaving ? (
+              <div
+                key={`leave-${leaving.result.rangeStart}-${leaving.view}`}
+                className={`history-pane history-pane-leave history-pane-leave-${leaving.motion}`}
+                onAnimationEnd={() => setLeaving(null)}
+                aria-hidden="true"
+              >
+                <HistoryBody result={leaving.result} view={leaving.view} />
               </div>
+            ) : null}
+            <div
+              key={`enter-${frame.result.rangeStart}-${frame.view}`}
+              className={
+                enterMotion
+                  ? `history-pane history-pane-enter history-pane-enter-${enterMotion}`
+                  : 'history-pane'
+              }
+            >
+              <HistoryBody result={frame.result} view={frame.view} />
             </div>
           </div>
         ) : (
