@@ -3,6 +3,7 @@ import type { HistoryQuery, HistoryResult, PomodoroSettings, Session, SessionTyp
 /** Channel names shared by main and preload. Keep this list small and explicit. */
 export const IpcChannels = {
   ping: 'app:ping',
+  getVersion: 'app:get-version',
   windowMinimize: 'window:minimize',
   windowRestore: 'window:restore',
   windowClose: 'window:close',
@@ -84,6 +85,7 @@ export interface ShortcutStatus {
 /** Renderer-facing API surface (exposed via contextBridge). */
 export interface FluxPomoApi {
   ping: () => Promise<string>
+  getVersion: () => Promise<string>
   versions: AppVersions
   window: {
     minimize: () => Promise<void>

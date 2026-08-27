@@ -788,14 +788,19 @@ html.is-mini #root {
 }
 
 .page-timer {
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+  height: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   gap: 0;
-  height: 100%;
-  min-height: 0;
+  margin: 0;
+  padding: 8px 0 12px;
   transition: filter 600ms ease;
 }
 
@@ -928,11 +933,12 @@ html.is-mini #root {
   /* Compact pack — do not stretch, so empty window space stays outside the group */
   flex: 0 0 auto;
   width: 100%;
-  max-width: 300px;
+  max-width: 280px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 14px;
   margin: 0 auto;
   padding: 0;
 }
@@ -957,10 +963,10 @@ html.is-mini #root {
 .timer-subtitle {
   margin: 0;
   color: var(--fog);
-  font-size: 12px;
-  line-height: 1.3;
+  font-size: 15px;
+  line-height: 1.35;
   text-align: center;
-  max-width: 30ch;
+  max-width: 32ch;
 }
 
 .phase-pill {
@@ -968,11 +974,11 @@ html.is-mini #root {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 5px 12px;
+  padding: 7px 16px;
   border-radius: 999px;
   background: var(--ink-soft);
   color: var(--matcha-soft);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1039,7 +1045,7 @@ html.is-mini #root {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 20px 0 16px;
+  padding: 0;
   pointer-events: none;
 }
 
@@ -1332,6 +1338,96 @@ html.is-mini #root {
   gap: 14px;
 }
 
+.field-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+@media (max-width: 460px) {
+  .field-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-settings {
+  gap: 14px;
+  padding-bottom: 8px;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--ink-soft);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.settings-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-tab {
+  appearance: none;
+  flex: 1 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--fog);
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.settings-tab:hover {
+  color: var(--snow);
+}
+
+.settings-tab.active {
+  background: var(--matcha);
+  color: var(--ink);
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 280px;
+}
+
+.settings-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(243, 239, 230, 0.08);
+}
+
+.settings-section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--snow);
+}
+
+.settings-section-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--fog);
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -1439,8 +1535,17 @@ html.is-mini #root {
 
 .settings-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 8px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0 2px;
+  background: linear-gradient(180deg, transparent, var(--ink) 28%);
+}
+
+.settings-saved {
+  margin: 0;
 }
 
 .settings-note {
@@ -1451,6 +1556,66 @@ html.is-mini #root {
 
 .updater-block {
   margin-top: 8px;
+}
+
+.updater {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.updater-version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--ink);
+  border: 1px solid rgba(243, 239, 230, 0.1);
+}
+
+.updater-version-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fog);
+}
+
+.updater-version-value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--snow);
+}
+
+.updater-status {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--snow);
+}
+
+.updater-status-ok {
+  color: var(--matcha-soft);
+}
+
+.updater-status-warn {
+  color: var(--amber);
+}
+
+.updater-status-error {
+  color: var(--coral);
+}
+
+.updater-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
 }
 
 .history-toolbar {

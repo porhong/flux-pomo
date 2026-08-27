@@ -66,7 +66,7 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 | Updates       | GitHub Releases API (portable download)      |
 | CI            | GitHub Actions release workflow              |
 
-**Requirements:** Node.js **≥ 22.12**, npm, and Python 3 with Pillow (for packaging icons).
+**Requirements:** Node.js **≥ 22.12** and npm. (Python 3 + Pillow only if you regenerate icons from the WebP logo.)
 
 ---
 
@@ -95,7 +95,8 @@ flux-pomo/
 │   └── shared/               # Types + IPC channel contracts
 ├── resources/                # Logo, sounds, assets
 ├── build/                    # electron-builder icon (generated)
-├── scripts/generate-icon.py  # WebP → PNG for packaging
+├── scripts/generate-icon.mjs # Optional: refresh PNG/ICO from logo
+├── scripts/check-icons.mjs   # Verify committed icons before build
 ├── electron-builder.yml
 └── electron.vite.config.ts
 ```
@@ -156,30 +157,36 @@ Open the app, set durations in **Settings**, optionally pick a music folder, ena
 | `npm run typecheck`      | Typecheck main + renderer               |
 | `npm run lint`           | ESLint                                  |
 | `npm run format`         | Prettier                                |
-| `npm run icons:generate` | Generate `build/icon.png` from the logo |
+| `npm run icons:check` | Verify committed `build/icon.*` files exist |
+| `npm run icons:generate` | Regenerate PNG/ICO from the logo (optional) |
+| `npm run icons:apply-win` | Embed `build/icon.ico` into Windows `.exe` after package |
 | `npm run build`          | Icons + typecheck + production bundle   |
 | `npm run build:win`      | Windows portable `.exe` → `dist/`       |
 | `npm run build:mac`      | macOS `.zip`                            |
 | `npm run build:linux`    | Linux AppImage                          |
 | `npm run build:unpack`   | Unpackaged dir build (debug packaging)  |
 
-### Icon generation
+### Icons (pre-rendered)
 
-Packaging needs a multi-size Windows `.ico` (Explorer list view fails with single-size icons). Generate from the logo:
+Packaging uses **committed** icons under `build/` — release CI does **not** regenerate them.
+
+| File | Purpose |
+|------|---------|
+| `build/icon.ico` | Windows portable / Explorer (multi-size) |
+| `build/icon.png` | Linux / general packaging |
+| `resources/icon.png` | Runtime window icon |
+
+`npm run build` only checks that these files exist (`icons:check`).
+
+To refresh icons after changing the logo (optional; needs Python 3 + Pillow):
 
 ```bash
-# Requires Python 3 + Pillow for WebP → PNG
 pip install pillow
 npm run icons:generate
+git add build/icon.ico build/icon.png resources/icon.png
 ```
 
-This writes:
-- `build/icon.png` / `resources/icon.png` (512×512)
-- `build/icon.ico` (16 / 32 / 48 / 256 — used by the portable `.exe`)
-
-`npm run build` / `npm run build:win` run icon generation automatically.
-
-After the Windows portable build, `npm run icons:apply-win` embeds that `.ico` into both `FluxPomo.exe` and `flux-pomo-*-portable.exe` (the portable wrapper often keeps Electron’s default icon without this step).
+After a Windows portable build, `icons:apply-win` embeds the committed `.ico` into the `.exe` files (does not re-render the icon).
 
 ---
 
@@ -300,7 +307,7 @@ When a newer version exists, **Download update** opens the portable `.exe` (or r
 | Shortcut already in use        | Choose another key combo; two shortcuts cannot share the same accelerator                     |
 | Music won’t start              | Pick a folder with supported audio, enable music, click Start once (autoplay needs a gesture) |
 | Floating chip missing          | Use title-bar Minimize (not OS minimize); or press the window toggle shortcut                 |
-| Icon missing in packaged build | Run `npm run icons:generate` (Pillow required) before / via `npm run build`                   |
+| Icon missing in packaged build | Ensure `build/icon.ico` is committed; run `npm run icons:generate` only if regenerating from the logo |
 
 ---
 

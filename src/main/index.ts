@@ -80,6 +80,7 @@ function registerWindowIpc(): void {
 
 function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannels.ping, () => 'pong')
+  ipcMain.handle(IpcChannels.getVersion, () => app.getVersion())
   registerWindowIpc()
   registerPomodoroIpc()
   registerMusicIpc()

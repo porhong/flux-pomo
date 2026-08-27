@@ -18,6 +18,7 @@ import {
  */
 const api: FluxPomoApi = {
   ping: (): Promise<string> => ipcRenderer.invoke(IpcChannels.ping),
+  getVersion: (): Promise<string> => ipcRenderer.invoke(IpcChannels.getVersion),
   versions: {
     electron: process.versions.electron,
     chrome: process.versions.chrome,
