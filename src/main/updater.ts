@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IpcChannels, type UpdateCheckResult, type UpdaterStatus } from '../shared/ipc'
 import { getUserDataPath } from './paths'
-import { quitApp } from './windows'
+import { quitForUpdate } from './windows'
 
 const GITHUB_OWNER = 'porhong'
 const GITHUB_REPO = 'flux-pomo'
@@ -268,49 +268,54 @@ async function downloadUpdate(): Promise<void> {
   }
 }
 
-function buildReplaceHelperCmd(options: {
+function buildReplaceHelperPs1(options: {
   pid: number
   sourcePath: string
   targetPath: string
   helperPath: string
 }): string {
   const { pid, sourcePath, targetPath, helperPath } = options
-  // Escape for cmd: wrap paths in quotes; caret-escape nothing else needed for typical paths.
-  const src = sourcePath.replace(/"/g, '')
-  const dst = targetPath.replace(/"/g, '')
-  const self = helperPath.replace(/"/g, '')
+  const psQuote = (value: string): string => `'${value.replace(/'/g, "''")}'`
 
-  return `@echo off
-setlocal EnableExtensions
-set "SRC=${src}"
-set "DST=${dst}"
-set "PID=${pid}"
+  return `# Flux Pomo portable self-update helper
+$ErrorActionPreference = 'SilentlyContinue'
 
-:wait_exit
-tasklist /FI "PID eq %PID%" 2>NUL | find "%PID%" >NUL
-if not errorlevel 1 (
-  timeout /T 1 /NOBREAK >NUL
-  goto wait_exit
-)
+$ProcessId = ${pid}
+$SourcePath = ${psQuote(sourcePath)}
+$TargetPath = ${psQuote(targetPath)}
+$HelperPath = ${psQuote(helperPath)}
 
-set /A TRIES=0
-:replace
-set /A TRIES+=1
-move /Y "%SRC%" "%DST%" >NUL 2>&1
-if not errorlevel 1 goto launch
-if %TRIES% GEQ 30 goto fail
-timeout /T 1 /NOBREAK >NUL
-goto replace
+try {
+  Wait-Process -Id $ProcessId -Timeout 120
+} catch {
+  # Process already exited or Wait-Process timed out.
+}
 
-:launch
-start "" "%DST%"
-del /F /Q "%~f0" >NUL 2>&1
-exit /B 0
+$stillRunning = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+if ($stillRunning) {
+  Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 2
+}
 
-:fail
-del /F /Q "%SRC%" >NUL 2>&1
-del /F /Q "${self}" >NUL 2>&1
-exit /B 1
+$replaced = $false
+for ($try = 1; $try -le 30; $try++) {
+  try {
+    Move-Item -LiteralPath $SourcePath -Destination $TargetPath -Force -ErrorAction Stop
+    $replaced = $true
+    break
+  } catch {
+    Start-Sleep -Seconds 1
+  }
+}
+
+if ($replaced) {
+  Start-Process -FilePath $TargetPath
+} else {
+  Remove-Item -LiteralPath $SourcePath -Force -ErrorAction SilentlyContinue
+}
+
+Remove-Item -LiteralPath $HelperPath -Force -ErrorAction SilentlyContinue
+if ($replaced) { exit 0 } else { exit 1 }
 `
 }
 
@@ -337,9 +342,9 @@ async function installUpdate(): Promise<void> {
 
   const updatesDir = getUpdatesDir()
   await mkdir(updatesDir, { recursive: true })
-  const helperPath = join(updatesDir, `apply-update-${update.version}.cmd`)
+  const helperPath = join(updatesDir, `apply-update-${update.version}.ps1`)
 
-  const script = buildReplaceHelperCmd({
+  const script = buildReplaceHelperPs1({
     pid: process.pid,
     sourcePath: downloadedPath,
     targetPath: portablePath,
@@ -351,18 +356,22 @@ async function installUpdate(): Promise<void> {
   // Ensure target directory exists (should already).
   await mkdir(dirname(portablePath), { recursive: true })
 
-  const child = spawn('cmd.exe', ['/c', helperPath], {
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true,
-    cwd: updatesDir
-  })
+  const child = spawn(
+    'powershell.exe',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', helperPath],
+    {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+      cwd: updatesDir
+    }
+  )
   child.unref()
 
   // Give the helper a moment to start before we exit.
   setTimeout(() => {
-    quitApp()
-  }, 250)
+    quitForUpdate()
+  }, 500)
 }
 
 export function setupAutoUpdater(): void {

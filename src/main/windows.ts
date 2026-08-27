@@ -465,6 +465,24 @@ export function quitApp(): void {
   app.quit()
 }
 
+/** Immediate exit for portable self-update (must release the .exe lock). */
+export function quitForUpdate(): void {
+  isQuitting = true
+  miniModeActive = false
+  stopMiniDrag()
+  if (miniWindow && !miniWindow.isDestroyed()) {
+    miniWindow.destroy()
+    miniWindow = null
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy()
+    mainWindow = null
+  }
+  tray?.destroy()
+  tray = null
+  app.exit(0)
+}
+
 function resolveQuitPrompt(confirmed: boolean): void {
   quitPromptResolver?.(confirmed)
   quitPromptResolver = null
