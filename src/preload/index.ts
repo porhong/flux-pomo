@@ -25,7 +25,8 @@ const api: FluxPomoApi = {
   window: {
     minimize: () => ipcRenderer.invoke(IpcChannels.windowMinimize),
     restore: () => ipcRenderer.invoke(IpcChannels.windowRestore),
-    close: () => ipcRenderer.invoke(IpcChannels.windowClose)
+    close: () => ipcRenderer.invoke(IpcChannels.windowClose),
+    setMiniToast: (visible: boolean) => ipcRenderer.invoke(IpcChannels.windowMiniToast, visible)
   },
   timer: {
     publish: (snapshot: TimerSnapshot) => ipcRenderer.invoke(IpcChannels.timerPublish, snapshot),

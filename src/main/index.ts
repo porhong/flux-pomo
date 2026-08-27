@@ -12,7 +12,8 @@ import {
   minimizeToMini,
   quitApp,
   restoreFromMini,
-  setLatestSnapshot
+  setLatestSnapshot,
+  setMiniToastVisible
 } from './windows'
 import { clearShortcuts, syncShortcuts } from './shortcuts'
 import { getSettings } from './store'
@@ -31,6 +32,10 @@ function registerWindowIpc(): void {
 
   ipcMain.handle(IpcChannels.windowClose, () => {
     quitApp()
+  })
+
+  ipcMain.handle(IpcChannels.windowMiniToast, (_event, visible: boolean) => {
+    setMiniToastVisible(Boolean(visible))
   })
 
   ipcMain.handle(IpcChannels.timerPublish, (_event, snapshot: TimerSnapshot) => {

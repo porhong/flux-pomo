@@ -6,6 +6,7 @@ export const IpcChannels = {
   windowMinimize: 'window:minimize',
   windowRestore: 'window:restore',
   windowClose: 'window:close',
+  windowMiniToast: 'window:mini-toast',
   timerPublish: 'timer:publish',
   timerState: 'timer:state',
   timerGetState: 'timer:get-state',
@@ -80,6 +81,7 @@ export interface FluxPomoApi {
     minimize: () => Promise<void>
     restore: () => Promise<void>
     close: () => Promise<void>
+    setMiniToast: (visible: boolean) => Promise<void>
   }
   timer: {
     publish: (snapshot: TimerSnapshot) => Promise<void>

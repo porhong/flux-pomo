@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { SessionType } from '../../../shared/types'
+import { playRestTime, playSessionStartStop } from '../lib/sounds'
 import { minutesToMs, phaseLabel } from '../lib/time'
 import { useSettingsStore } from './settingsStore'
 
@@ -14,7 +15,7 @@ interface TimerState {
   focusCountInCycle: number
   runStartedAt: string | null
   tick: () => void
-  start: () => void
+  start: (options?: { silent?: boolean }) => void
   pause: () => void
   reset: () => void
   skip: () => Promise<void>
@@ -106,7 +107,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     }
   },
 
-  start: () => {
+  start: (options) => {
     const { remainingMs, status } = get()
     if (status === 'running' || remainingMs <= 0) return
     const endsAt = Date.now() + remainingMs
@@ -116,6 +117,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       runStartedAt: get().runStartedAt ?? new Date().toISOString()
     })
     startTicker(() => get().tick())
+    if (!options?.silent) {
+      playSessionStartStop()
+    }
   },
 
   pause: () => {
@@ -127,6 +131,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       remainingMs: Math.max(0, endsAt - Date.now()),
       endsAt: null
     })
+    playSessionStartStop()
   },
 
   reset: () => {
@@ -174,6 +179,10 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       (next.phase === 'focus' && settings.autoStartFocus) ||
       (next.phase !== 'focus' && settings.autoStartBreaks)
 
+    if (next.phase === 'shortBreak' || next.phase === 'longBreak') {
+      playRestTime()
+    }
+
     set({
       phase: next.phase,
       focusCountInCycle: next.focusCountInCycle,
@@ -185,7 +194,8 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     })
 
     if (shouldAutoStart) {
-      get().start()
+      // Rest cue already played for breaks; keep start cue for auto-focus.
+      get().start({ silent: next.phase !== 'focus' })
     }
   }
 }))

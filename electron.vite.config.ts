@@ -8,9 +8,17 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
+        '@renderer': resolve('src/renderer/src'),
+        '@resources': resolve('resources')
       }
     },
+    server: {
+      fs: {
+        // Keep project root (renderer HTML/src) plus resources for sound assets.
+        allow: [resolve('.'), resolve('resources')]
+      }
+    },
+    assetsInclude: ['**/*.mp3'],
     plugins: [react()]
   }
 })
