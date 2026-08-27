@@ -61,6 +61,17 @@ export function normalizeAnchor(view: HistoryView, anchorDate: string): string {
   return format(startOfDay(date), 'yyyy-MM-dd')
 }
 
+/** Whether `anchorDate` is already in the current day / week / month for `view`. */
+export function isCurrentPeriod(view: HistoryView, anchorDate: string): boolean {
+  return normalizeAnchor(view, anchorDate) === normalizeAnchor(view, todayIsoDate())
+}
+
+export function currentPeriodButtonLabel(view: HistoryView): string {
+  if (view === 'day') return 'Today'
+  if (view === 'week') return 'This week'
+  return 'This month'
+}
+
 export function shortDayLabel(dateIso: string): string {
   return format(parseISO(dateIso), 'EEEEE')
 }

@@ -2,7 +2,7 @@ import { useMusicStore } from '../../stores/musicStore'
 
 function PrevIcon(): React.JSX.Element {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M6 6v12M18 6l-10 6 10 6V6z" fill="currentColor" />
     </svg>
   )
@@ -10,7 +10,7 @@ function PrevIcon(): React.JSX.Element {
 
 function NextIcon(): React.JSX.Element {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M18 6v12M6 6l10 6-10 6V6z" fill="currentColor" />
     </svg>
   )
@@ -18,7 +18,7 @@ function NextIcon(): React.JSX.Element {
 
 function PlayIcon(): React.JSX.Element {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M7 6v12l10-6L7 6z" fill="currentColor" />
     </svg>
   )
@@ -26,7 +26,7 @@ function PlayIcon(): React.JSX.Element {
 
 function PauseIcon(): React.JSX.Element {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
       <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
       <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
     </svg>

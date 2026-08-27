@@ -644,12 +644,71 @@ html.is-mini #root {
   padding-top: 0;
   display: flex;
   flex-direction: column;
-  animation: rise 320ms ease-out;
 }
 
-.app-main > .page {
+.app-main > .page-transition {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main > .page-transition > .page {
+  flex: 1;
+  min-height: 0;
+}
+
+.page-transition-fade {
+  animation: pageEnterFade 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page-transition-left {
+  animation: pageEnterLeft 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page-transition-right {
+  animation: pageEnterRight 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pageEnterFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageEnterLeft {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pageEnterRight {
+  from {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition-fade,
+  .page-transition-left,
+  .page-transition-right {
+    animation: none !important;
+  }
 }
 
 .title-bar {
@@ -730,17 +789,6 @@ html.is-mini #root {
   outline-offset: -2px;
 }
 
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .app-nav {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -767,12 +815,17 @@ html.is-mini #root {
   font-weight: 600;
   letter-spacing: 0.02em;
   transition:
-    color 160ms ease,
-    background 160ms ease;
+    color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .nav-link:hover {
   color: var(--snow);
+}
+
+.nav-link:active {
+  transform: scale(0.97);
 }
 
 .nav-link.active {
@@ -933,12 +986,12 @@ html.is-mini #root {
   /* Compact pack — do not stretch, so empty window space stays outside the group */
   flex: 0 0 auto;
   width: 100%;
-  max-width: 280px;
+  max-width: 300px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 18px;
   margin: 0 auto;
   padding: 0;
 }
@@ -1181,7 +1234,7 @@ html.is-mini #root {
 .controls {
   display: flex;
   width: 100%;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
   align-items: center;
   flex-wrap: nowrap;
@@ -1189,20 +1242,22 @@ html.is-mini #root {
 
 .controls .btn {
   flex: 1;
-  max-width: 112px;
-  min-height: 36px;
-  padding: 0 14px;
+  max-width: none;
+  min-height: 42px;
+  padding: 0 18px;
+  font-size: 14px;
+  letter-spacing: 0.02em;
 }
 
 .music-controller {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 72px;
+  grid-template-columns: auto minmax(0, 1fr) 84px;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  margin-top: 0;
-  padding: 6px 10px;
-  border-radius: 12px;
+  margin-top: 2px;
+  padding: 10px 12px;
+  border-radius: 16px;
   background: rgba(243, 239, 230, 0.04);
   border: 1px solid rgba(243, 239, 230, 0.08);
 }
@@ -1210,7 +1265,7 @@ html.is-mini #root {
 .music-controller-transport {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .music-btn {
@@ -1218,8 +1273,8 @@ html.is-mini #root {
   border: none;
   background: transparent;
   color: var(--fog);
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -1227,7 +1282,8 @@ html.is-mini #root {
   cursor: pointer;
   transition:
     background 140ms ease,
-    color 140ms ease;
+    color 140ms ease,
+    transform 140ms ease;
 }
 
 .music-btn:hover:not(:disabled) {
@@ -1235,7 +1291,13 @@ html.is-mini #root {
   background: rgba(243, 239, 230, 0.08);
 }
 
+.music-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
 .music-btn-main {
+  width: 40px;
+  height: 40px;
   color: var(--snow);
   background: rgba(141, 181, 100, 0.18);
 }
@@ -1249,11 +1311,16 @@ html.is-mini #root {
   cursor: default;
 }
 
+.music-btn svg {
+  display: block;
+}
+
 .music-track {
   margin: 0;
   min-width: 0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.3;
   color: var(--fog);
   white-space: nowrap;
   overflow: hidden;
@@ -1263,11 +1330,13 @@ html.is-mini #root {
 .music-volume {
   display: inline-flex;
   align-items: center;
-  width: 72px;
+  width: 84px;
+  min-height: 36px;
 }
 
 .music-volume input[type='range'] {
   width: 100%;
+  height: 20px;
   accent-color: var(--matcha);
   cursor: pointer;
 }
@@ -1671,6 +1740,43 @@ html.is-mini #root {
   gap: 8px;
 }
 
+.period-current-btn {
+  appearance: none;
+  border: 1px solid rgba(243, 239, 230, 0.18);
+  background: transparent;
+  color: var(--snow);
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.period-current-btn:hover:not(:disabled) {
+  background: rgba(243, 239, 230, 0.06);
+}
+
+.period-current-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.period-current-btn:focus-visible {
+  outline: 2px solid rgba(141, 181, 100, 0.55);
+  outline-offset: 2px;
+}
+
+.period-current-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .period-nav-btn {
   appearance: none;
   border: 1px solid rgba(243, 239, 230, 0.18);
@@ -1706,10 +1812,207 @@ html.is-mini #root {
 }
 
 .period-label {
+  position: relative;
   min-width: 140px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+}
+
+.period-label-text {
+  display: inline-block;
+  animation: historyLabelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: opacity 180ms ease;
+}
+
+.history-stage.is-pending {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.history-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.history-pane-fade {
+  animation: historyFadeIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-pane-left {
+  animation: historySlideLeft 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-pane-right {
+  animation: historySlideRight 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-sessions {
+  margin-top: 16px;
+}
+
+.history-pane .summary-card {
+  animation: historyCardIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-pane .summary-card:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.history-pane .summary-card:nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.history-pane .bar-col {
+  animation: historyBarIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-pane .bar-col:nth-child(1) {
+  animation-delay: 30ms;
+}
+.history-pane .bar-col:nth-child(2) {
+  animation-delay: 60ms;
+}
+.history-pane .bar-col:nth-child(3) {
+  animation-delay: 90ms;
+}
+.history-pane .bar-col:nth-child(4) {
+  animation-delay: 120ms;
+}
+.history-pane .bar-col:nth-child(5) {
+  animation-delay: 150ms;
+}
+.history-pane .bar-col:nth-child(6) {
+  animation-delay: 180ms;
+}
+.history-pane .bar-col:nth-child(7) {
+  animation-delay: 210ms;
+}
+
+.history-pane .month-grid {
+  animation: historyFadeIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-pane .session-item {
+  animation: historyCardIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.history-pane .session-item:nth-child(1) {
+  animation-delay: 40ms;
+}
+.history-pane .session-item:nth-child(2) {
+  animation-delay: 70ms;
+}
+.history-pane .session-item:nth-child(3) {
+  animation-delay: 100ms;
+}
+.history-pane .session-item:nth-child(4) {
+  animation-delay: 130ms;
+}
+.history-pane .session-item:nth-child(5) {
+  animation-delay: 160ms;
+}
+.history-pane .session-item:nth-child(6) {
+  animation-delay: 190ms;
+}
+
+@keyframes historyFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes historySlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes historySlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes historyLabelIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes historyCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes historyBarIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scaleY(0.72);
+    transform-origin: bottom center;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    transform-origin: bottom center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-stage,
+  .history-stage.is-pending {
+    transition: none;
+    opacity: 1;
+  }
+
+  .period-label-text,
+  .history-pane-fade,
+  .history-pane-left,
+  .history-pane-right,
+  .history-pane .summary-card,
+  .history-pane .bar-col,
+  .history-pane .month-grid,
+  .history-pane .session-item {
+    animation: none !important;
+  }
 }
 
 .summary-strip {

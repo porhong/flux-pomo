@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import useFocusMusic from '../../hooks/useFocusMusic'
 import useQuitPrompt from '../../hooks/useQuitPrompt'
+import AnimatedOutlet from './AnimatedOutlet'
 import QuitConfirmDialog from './QuitConfirmDialog'
 import TitleBar from './TitleBar'
 
@@ -12,7 +13,7 @@ function AppShell(): React.JSX.Element {
     <div className="app-shell">
       <TitleBar />
       <main className="app-main">
-        <Outlet />
+        <AnimatedOutlet />
       </main>
       <nav className="app-nav" aria-label="Primary">
         <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/" end>
