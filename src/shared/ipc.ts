@@ -10,6 +10,9 @@ export const IpcChannels = {
   windowMiniDragStart: 'window:mini-drag-start',
   windowMiniDragMove: 'window:mini-drag-move',
   windowMiniDragEnd: 'window:mini-drag-end',
+  windowQuitPrompt: 'window:quit-prompt',
+  windowQuitConfirm: 'window:quit-confirm',
+  windowQuitCancel: 'window:quit-cancel',
   timerPublish: 'timer:publish',
   timerState: 'timer:state',
   timerGetState: 'timer:get-state',
@@ -96,6 +99,9 @@ export interface FluxPomoApi {
     startMiniDrag: () => void
     moveMiniDrag: () => void
     endMiniDrag: () => void
+    onQuitPrompt: (listener: () => void) => () => void
+    confirmQuit: () => Promise<void>
+    cancelQuit: () => Promise<void>
   }
   timer: {
     publish: (snapshot: TimerSnapshot) => Promise<void>

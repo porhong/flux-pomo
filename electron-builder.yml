@@ -13,6 +13,7 @@ asarUnpack:
   - resources/**
 win:
   executableName: FluxPomo
+  icon: build/icon.ico
   # Portable .exe — run without installing
   target:
     - target: portable
@@ -34,6 +35,7 @@ dmg:
 linux:
   target:
     - AppImage
+  icon: build/icon.png
   maintainer: porhong
   category: Utility
 appImage:

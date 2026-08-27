@@ -1,7 +1,10 @@
+import AppLogo from './AppLogo'
+
 function TitleBar(): React.JSX.Element {
   return (
     <header className="title-bar" aria-label="Window controls">
       <div className="title-bar-drag">
+        <AppLogo className="title-bar-logo" size={20} />
         <span className="title-bar-brand">Flux Pomo</span>
       </div>
       <div className="title-bar-controls">

@@ -1,4 +1,4 @@
-import sessionStartStopUrl from '@resources/sounds/Session start stop.mp3?url'
+import sessionStartStopUrl from '@resources/sounds/Start.mp3?url'
 import restTimeUrl from '@resources/sounds/Rest time.mp3?url'
 import stopUrl from '@resources/sounds/Stop.mp3?url'
 

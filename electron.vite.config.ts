@@ -18,7 +18,7 @@ export default defineConfig({
         allow: [resolve('.'), resolve('resources')]
       }
     },
-    assetsInclude: ['**/*.mp3'],
+    assetsInclude: ['**/*.mp3', '**/*.webp'],
     plugins: [react()]
   }
 })

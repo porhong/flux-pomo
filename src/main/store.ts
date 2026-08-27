@@ -70,6 +70,9 @@ function clampSettings(input: PomodoroSettings): PomodoroSettings {
     toggleTimerAccelerator: normalizeAccelerator(
       input.toggleTimerAccelerator ?? DEFAULT_SETTINGS.toggleTimerAccelerator
     ),
+    toggleWindowAccelerator: normalizeAccelerator(
+      input.toggleWindowAccelerator ?? DEFAULT_SETTINGS.toggleWindowAccelerator
+    ),
     musicEnabled: Boolean(input.musicEnabled),
     musicFolderPath: folder,
     musicVolume

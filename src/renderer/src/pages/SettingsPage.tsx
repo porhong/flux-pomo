@@ -15,7 +15,7 @@ function SettingsPage(): React.JSX.Element {
   const syncFromSettings = useTimerStore((s) => s.syncFromSettings)
   const [draft, setDraft] = useState<PomodoroSettings | null>(null)
   const [savedAt, setSavedAt] = useState<string | null>(null)
-  const [capturing, setCapturing] = useState(false)
+  const [capturing, setCapturing] = useState<'timer' | 'window' | null>(null)
   const [shortcutError, setShortcutError] = useState<string | null>(null)
   const [trackCount, setTrackCount] = useState<number | null>(null)
 
@@ -29,7 +29,7 @@ function SettingsPage(): React.JSX.Element {
       event.stopPropagation()
 
       if (event.key === 'Escape') {
-        setCapturing(false)
+        setCapturing(null)
         return
       }
 
@@ -38,9 +38,11 @@ function SettingsPage(): React.JSX.Element {
 
       setDraft((prev) => ({
         ...(prev ?? settings),
-        toggleTimerAccelerator: accelerator
+        ...(capturing === 'timer'
+          ? { toggleTimerAccelerator: accelerator }
+          : { toggleWindowAccelerator: accelerator })
       }))
-      setCapturing(false)
+      setCapturing(null)
     }
 
     window.addEventListener('keydown', onKeyDown, true)
@@ -264,13 +266,13 @@ function SettingsPage(): React.JSX.Element {
       <div className="panel field-grid">
         <header className="page-header">
           <h2 className="page-sub" style={{ color: 'var(--snow)', fontSize: 16, fontWeight: 600 }}>
-            Keyboard shortcut
+            Keyboard shortcuts
           </h2>
-          <p className="page-sub">Global start/pause — works even when Flux Pomo is minimized.</p>
+          <p className="page-sub">Global controls — work even when Flux Pomo is minimized.</p>
         </header>
 
         <label className="toggle-row">
-          <span>Enable global shortcut</span>
+          <span>Enable global shortcuts</span>
           <input
             type="checkbox"
             checked={current.shortcutsEnabled}
@@ -284,22 +286,22 @@ function SettingsPage(): React.JSX.Element {
         </label>
 
         <div className="field">
-          <span className="field-label">Start / pause shortcut</span>
+          <span className="field-label">Start / pause timer</span>
           <div className="shortcut-row">
             <button
               type="button"
-              className={`shortcut-capture${capturing ? ' capturing' : ''}`}
+              className={`shortcut-capture${capturing === 'timer' ? ' capturing' : ''}`}
               disabled={!current.shortcutsEnabled}
-              onClick={() => setCapturing(true)}
+              onClick={() => setCapturing('timer')}
             >
-              {capturing
+              {capturing === 'timer'
                 ? 'Press keys… (Esc to cancel)'
                 : formatAcceleratorLabel(current.toggleTimerAccelerator)}
             </button>
             <button
               type="button"
               className="btn btn-ghost"
-              disabled={!current.shortcutsEnabled || capturing}
+              disabled={!current.shortcutsEnabled || capturing != null}
               onClick={() =>
                 setDraft((prev) => ({
                   ...(prev ?? settings),
@@ -310,8 +312,39 @@ function SettingsPage(): React.JSX.Element {
               Reset
             </button>
           </div>
+          <p className="settings-note">Default is Ctrl/⌘ + Shift + Space.</p>
+        </div>
+
+        <div className="field">
+          <span className="field-label">Show full app / compact timer</span>
+          <div className="shortcut-row">
+            <button
+              type="button"
+              className={`shortcut-capture${capturing === 'window' ? ' capturing' : ''}`}
+              disabled={!current.shortcutsEnabled}
+              onClick={() => setCapturing('window')}
+            >
+              {capturing === 'window'
+                ? 'Press keys… (Esc to cancel)'
+                : formatAcceleratorLabel(current.toggleWindowAccelerator)}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={!current.shortcutsEnabled || capturing != null}
+              onClick={() =>
+                setDraft((prev) => ({
+                  ...(prev ?? settings),
+                  toggleWindowAccelerator: DEFAULT_SETTINGS.toggleWindowAccelerator
+                }))
+              }
+            >
+              Reset
+            </button>
+          </div>
           <p className="settings-note">
-            Default is Ctrl/⌘ + Shift + Space. Include at least one modifier key.
+            Default is Ctrl/⌘ + Shift + X. Press once to open the full app, again to minimize to the
+            floating timer.
           </p>
           {shortcutError ? <p className="settings-note settings-error">{shortcutError}</p> : null}
         </div>

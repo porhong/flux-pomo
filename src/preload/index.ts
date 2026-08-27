@@ -38,7 +38,18 @@ const api: FluxPomoApi = {
     },
     endMiniDrag: () => {
       ipcRenderer.send(IpcChannels.windowMiniDragEnd)
-    }
+    },
+    onQuitPrompt: (listener) => {
+      const handler = (): void => {
+        listener()
+      }
+      ipcRenderer.on(IpcChannels.windowQuitPrompt, handler)
+      return () => {
+        ipcRenderer.removeListener(IpcChannels.windowQuitPrompt, handler)
+      }
+    },
+    confirmQuit: () => ipcRenderer.invoke(IpcChannels.windowQuitConfirm),
+    cancelQuit: () => ipcRenderer.invoke(IpcChannels.windowQuitCancel)
   },
   timer: {
     publish: (snapshot: TimerSnapshot) => ipcRenderer.invoke(IpcChannels.timerPublish, snapshot),

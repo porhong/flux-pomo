@@ -1,9 +1,13 @@
 import { create } from 'zustand'
 import type { MusicTrack } from '../../../shared/ipc'
+import { playPause, playRestTime } from '../lib/sounds'
 import {
+  fadeInPlay,
+  fadeOutPause,
   getIndex,
   getTracks,
   isAudioPlaying,
+  isFading,
   next as playerNext,
   onPlayingChange,
   onTrackChange,
@@ -16,6 +20,8 @@ import {
   toggle as playerToggle
 } from '../lib/musicPlayer'
 
+export type MusicStopSfx = 'pause' | 'rest'
+
 interface MusicState {
   tracks: MusicTrack[]
   index: number
@@ -23,6 +29,7 @@ interface MusicState {
   volume: number
   loading: boolean
   emptyReason: string | null
+  loadedFolderPath: string | null
   bindPlayerEvents: () => () => void
   loadFromFolder: (folderPath: string | null, enabled: boolean) => Promise<void>
   play: () => void
@@ -32,7 +39,7 @@ interface MusicState {
   prev: () => void
   setVolume: (volume: number) => void
   persistVolume: (volume: number) => Promise<void>
-  syncAutoPlayback: (shouldPlay: boolean) => void
+  syncAutoPlayback: (shouldPlay: boolean, stopSfx?: MusicStopSfx | null) => void
 }
 
 export const useMusicStore = create<MusicState>((set, get) => ({
@@ -42,8 +49,14 @@ export const useMusicStore = create<MusicState>((set, get) => ({
   volume: 0.5,
   loading: false,
   emptyReason: 'Choose a folder in Settings',
+  loadedFolderPath: null,
 
   bindPlayerEvents: () => {
+    set({
+      tracks: getTracks(),
+      index: getIndex(),
+      isPlaying: isAudioPlaying()
+    })
     const offPlaying = onPlayingChange((playing) => {
       set({ isPlaying: playing })
     })
@@ -65,6 +78,7 @@ export const useMusicStore = create<MusicState>((set, get) => ({
         index: 0,
         isPlaying: false,
         loading: false,
+        loadedFolderPath: null,
         emptyReason: 'Focus music is off'
       })
       return
@@ -78,7 +92,20 @@ export const useMusicStore = create<MusicState>((set, get) => ({
         index: 0,
         isPlaying: false,
         loading: false,
+        loadedFolderPath: null,
         emptyReason: 'Choose a folder in Settings'
+      })
+      return
+    }
+
+    const { loadedFolderPath, tracks: existingTracks } = get()
+    if (folderPath === loadedFolderPath && existingTracks.length > 0) {
+      set({
+        loading: false,
+        emptyReason: null,
+        index: getIndex(),
+        tracks: getTracks(),
+        isPlaying: isAudioPlaying()
       })
       return
     }
@@ -93,6 +120,7 @@ export const useMusicStore = create<MusicState>((set, get) => ({
         index: getIndex(),
         isPlaying: isAudioPlaying(),
         loading: false,
+        loadedFolderPath: folderPath,
         emptyReason: tracks.length === 0 ? 'No audio files in this folder' : null
       })
     } catch {
@@ -102,6 +130,7 @@ export const useMusicStore = create<MusicState>((set, get) => ({
         index: 0,
         isPlaying: false,
         loading: false,
+        loadedFolderPath: null,
         emptyReason: 'Could not read music folder'
       })
     }
@@ -147,19 +176,41 @@ export const useMusicStore = create<MusicState>((set, get) => ({
     await useSettingsStore.getState().save({ ...settings, musicVolume: next })
   },
 
-  syncAutoPlayback: (shouldPlay) => {
+  syncAutoPlayback: (shouldPlay, stopSfx = null) => {
     const { tracks } = get()
     if (tracks.length === 0) {
       stopKeepIndex()
       set({ isPlaying: false })
       return
     }
+
     if (shouldPlay) {
-      playerPlay()
-      set({ isPlaying: isAudioPlaying() })
+      if (isAudioPlaying() && !isFading()) {
+        set({ isPlaying: true })
+        return
+      }
+      fadeInPlay()
+      set({ isPlaying: true })
       return
     }
+
+    const playStopSfx = (): void => {
+      if (stopSfx === 'pause') playPause()
+      if (stopSfx === 'rest') playRestTime()
+    }
+
+    if (isAudioPlaying() || isFading()) {
+      fadeOutPause({
+        onComplete: () => {
+          set({ isPlaying: false })
+          playStopSfx()
+        }
+      })
+      return
+    }
+
     stopKeepIndex()
     set({ isPlaying: false })
+    playStopSfx()
   }
 }))

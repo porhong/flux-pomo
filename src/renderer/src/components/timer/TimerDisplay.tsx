@@ -8,6 +8,7 @@ interface TimerDisplayProps {
   plannedMs: number
   focusCountInCycle: number
   sessionsUntilLongBreak: number
+  subtitle: string
   onStart: () => void
   onPause: () => void
 }
@@ -36,6 +37,7 @@ function TimerDisplay({
   plannedMs,
   focusCountInCycle,
   sessionsUntilLongBreak,
+  subtitle,
   onStart,
   onPause
 }: TimerDisplayProps): React.JSX.Element {
@@ -52,7 +54,10 @@ function TimerDisplay({
 
   return (
     <div className={`timer-stage mood-${mood} phase-${phase} status-${status}`}>
-      <div className="phase-pill">{label}</div>
+      <div className="timer-heading">
+        <p className="timer-subtitle">{subtitle}</p>
+        <div className="phase-pill">{label}</div>
+      </div>
       <div className={`timer-ring ${phase}`}>
         <svg viewBox="0 0 260 260" aria-hidden>
           <circle className="track" cx="130" cy="130" r={radius} />

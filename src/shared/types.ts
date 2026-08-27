@@ -9,10 +9,12 @@ export interface PomodoroSettings {
   sessionsUntilLongBreak: number
   autoStartBreaks: boolean
   autoStartFocus: boolean
-  /** When true, register an OS-wide start/pause shortcut. */
+  /** When true, register OS-wide shortcuts. */
   shortcutsEnabled: boolean
   /** Electron accelerator, e.g. CommandOrControl+Shift+Space */
   toggleTimerAccelerator: string
+  /** Toggle full window ↔ floating mini, e.g. CommandOrControl+Shift+X */
+  toggleWindowAccelerator: string
   /** Play local playlist audio during running focus sessions. */
   musicEnabled: boolean
   /** Absolute path to a flat folder of audio files, or null when unset. */
@@ -68,6 +70,7 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
   autoStartFocus: false,
   shortcutsEnabled: false,
   toggleTimerAccelerator: 'CommandOrControl+Shift+Space',
+  toggleWindowAccelerator: 'CommandOrControl+Shift+X',
   musicEnabled: false,
   musicFolderPath: null,
   musicVolume: 0.5

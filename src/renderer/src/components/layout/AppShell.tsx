@@ -1,7 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import useFocusMusic from '../../hooks/useFocusMusic'
+import useQuitPrompt from '../../hooks/useQuitPrompt'
+import QuitConfirmDialog from './QuitConfirmDialog'
 import TitleBar from './TitleBar'
 
 function AppShell(): React.JSX.Element {
+  useFocusMusic()
+  const quitPrompt = useQuitPrompt()
+
   return (
     <div className="app-shell">
       <TitleBar />
@@ -22,6 +28,11 @@ function AppShell(): React.JSX.Element {
           Settings
         </NavLink>
       </nav>
+      <QuitConfirmDialog
+        open={quitPrompt.open}
+        onCancel={quitPrompt.cancel}
+        onConfirm={quitPrompt.confirm}
+      />
     </div>
   )
 }

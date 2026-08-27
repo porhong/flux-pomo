@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import appLogoUrl from '@resources/Flux Pomo logo.webp?url'
 import AppRouter from './app/Router'
 import useTimerBridge from './hooks/useTimerBridge'
 import { useSettingsStore } from './stores/settingsStore'
@@ -15,6 +16,17 @@ function App(): React.JSX.Element {
     document.documentElement.classList.toggle('is-mini', isMini)
     return () => document.documentElement.classList.remove('is-mini')
   }, [isMini])
+
+  useEffect(() => {
+    let link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'icon'
+      document.head.appendChild(link)
+    }
+    link.type = 'image/webp'
+    link.href = appLogoUrl
+  }, [])
 
   useEffect(() => {
     if (isMini) return

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { SessionType } from '../../../shared/types'
+import { isFocusMusicActive } from '../lib/focusMusic'
 import { playPause, playRestTime, playSessionStartStop } from '../lib/sounds'
 import { minutesToMs, phaseLabel } from '../lib/time'
 import { useSettingsStore } from './settingsStore'
@@ -131,7 +132,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       remainingMs: Math.max(0, endsAt - Date.now()),
       endsAt: null
     })
-    playPause()
+    if (!isFocusMusicActive()) {
+      playPause()
+    }
   },
 
   reset: () => {
@@ -149,7 +152,11 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   skip: async () => {
     const { status, endsAt } = get()
     if (status === 'running' && endsAt != null) {
-      set({ remainingMs: Math.max(0, endsAt - Date.now()), endsAt: null, status: 'paused' })
+      clearTicker()
+      set({
+        remainingMs: Math.max(0, endsAt - Date.now()),
+        endsAt: null
+      })
     }
     await get().completePhase(false)
   },
@@ -180,7 +187,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       (next.phase !== 'focus' && settings.autoStartBreaks)
 
     if (next.phase === 'shortBreak' || next.phase === 'longBreak') {
-      playRestTime()
+      if (!isFocusMusicActive()) {
+        playRestTime()
+      }
     }
 
     set({

@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import MusicController from '../components/timer/MusicController'
 import TimerControls from '../components/timer/TimerControls'
 import TimerDisplay from '../components/timer/TimerDisplay'
-import useFocusMusic from '../hooks/useFocusMusic'
 import { useMusicStore } from '../stores/musicStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useTimerStore } from '../stores/timerStore'
@@ -21,8 +20,6 @@ function TimerPage(): React.JSX.Element {
   const syncFromSettings = useTimerStore((s) => s.syncFromSettings)
   const syncAutoPlayback = useMusicStore((s) => s.syncAutoPlayback)
 
-  useFocusMusic()
-
   useEffect(() => {
     syncFromSettings()
   }, [settings, syncFromSettings])
@@ -39,18 +36,10 @@ function TimerPage(): React.JSX.Element {
 
   const onPause = (): void => {
     pause()
-    syncAutoPlayback(false)
   }
 
   return (
     <div className="page page-timer">
-      <header className="page-header page-header-center">
-        <h1 className="brand">Flux Pomo</h1>
-        <p className="page-sub">
-          {mood === 'focus' ? 'Deep work in progress.' : 'Stay with one thing, then rest.'}
-        </p>
-      </header>
-
       <div className="timer-home">
         <TimerDisplay
           phase={phase}
@@ -59,6 +48,9 @@ function TimerPage(): React.JSX.Element {
           plannedMs={plannedMs}
           focusCountInCycle={focusCountInCycle}
           sessionsUntilLongBreak={settings.sessionsUntilLongBreak}
+          subtitle={
+            mood === 'focus' ? 'Deep work in progress.' : 'Stay with one thing, then rest.'
+          }
           onStart={onStart}
           onPause={onPause}
         />

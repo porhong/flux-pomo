@@ -18,7 +18,8 @@ import {
   restoreFromMini,
   setLatestSnapshot,
   setMiniIgnoreMouse,
-  startMiniDrag
+  startMiniDrag,
+  registerQuitPromptIpc
 } from './windows'
 import { clearShortcuts, syncShortcuts } from './shortcuts'
 import { getSettings } from './store'
@@ -92,6 +93,7 @@ app.whenReady().then(() => {
 
   registerMusicProtocol()
   registerIpcHandlers()
+  registerQuitPromptIpc()
   setupAutoUpdater()
   createTray()
   createMainWindow()

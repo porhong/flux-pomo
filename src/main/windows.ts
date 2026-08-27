@@ -3,7 +3,7 @@ import {
   Menu,
   Tray,
   app,
-  dialog,
+  ipcMain,
   nativeImage,
   screen,
   shell,
@@ -18,6 +18,7 @@ import icon from '../../resources/icon.png?asset'
 /** Native window stays at expanded size; CSS animates the compact chip inside. */
 const MINI_WIDTH = 272
 const MINI_HEIGHT = 148
+const appIcon = nativeImage.createFromPath(icon)
 /**
  * High z-order that stays above normal apps.
  * Avoid `screen-saver` on Windows — it can make transparent windows fail to paint.
@@ -35,6 +36,7 @@ let miniDragging = false
 let miniTopPinned = false
 /** True only while the user is in compact/floating mode (after Minimize). */
 let miniModeActive = false
+let quitPromptResolver: ((confirmed: boolean) => void) | null = null
 
 const sharedWebPreferences = {
   preload: join(__dirname, '../preload/index.js'),
@@ -270,19 +272,28 @@ export function createMainWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
     width: 480,
     height: 720,
-    minWidth: 420,
-    minHeight: 640,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
     show: false,
     frame: false,
     autoHideMenuBar: true,
     title: 'Flux Pomo',
+    icon: appIcon,
     backgroundColor: '#12151a',
-    ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: { ...sharedWebPreferences }
   })
 
   attachNavigationGuards(mainWindow)
   mainWindow.webContents.setBackgroundThrottling(false)
+
+  if (process.platform === 'darwin' && !appIcon.isEmpty()) {
+    try {
+      app.dock?.setIcon(appIcon)
+    } catch {
+      // Dock icon is best-effort on macOS.
+    }
+  }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
@@ -319,8 +330,9 @@ function createMiniWindow(): BrowserWindow {
     focusable: true,
     hasShadow: false,
     title: 'Flux Pomo',
+    icon: appIcon,
     backgroundColor: '#00000000',
-    ...(process.platform === 'linux' ? { icon, type: 'toolbar' as const } : {}),
+    ...(process.platform === 'linux' ? { type: 'toolbar' as const } : {}),
     webPreferences: { ...sharedWebPreferences }
   })
 
@@ -412,6 +424,19 @@ export function minimizeToMini(): void {
   })()
 }
 
+/** Switch between full window and floating mini timer. */
+export function toggleCompactMode(): void {
+  if (miniModeActive) {
+    restoreFromMini()
+    return
+  }
+  minimizeToMini()
+}
+
+export function isMiniModeActive(): boolean {
+  return miniModeActive
+}
+
 export function restoreFromMini(): void {
   miniModeActive = false
   hideMiniWindow()
@@ -440,36 +465,80 @@ export function quitApp(): void {
   app.quit()
 }
 
+function resolveQuitPrompt(confirmed: boolean): void {
+  quitPromptResolver?.(confirmed)
+  quitPromptResolver = null
+}
+
+function whenMainVisible(main: BrowserWindow): Promise<void> {
+  if (main.isDestroyed()) return Promise.resolve()
+  if (main.isVisible() && !main.webContents.isLoadingMainFrame()) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (): void => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+
+    main.once('ready-to-show', finish)
+    main.webContents.once('did-finish-load', finish)
+    setTimeout(finish, 1200)
+  })
+}
+
+function promptQuitInRenderer(main: BrowserWindow): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (confirmed: boolean): void => {
+      if (settled) return
+      settled = true
+      quitPromptResolver = null
+      resolve(confirmed)
+    }
+
+    quitPromptResolver = finish
+    main.webContents.send(IpcChannels.windowQuitPrompt)
+    setTimeout(() => finish(false), 30_000)
+  })
+}
+
 /** Ask before quitting — used by the window close button and tray Quit. */
 export async function requestQuit(): Promise<boolean> {
-  const parent =
-    mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()
-      ? mainWindow
-      : miniWindow && !miniWindow.isDestroyed() && miniWindow.isVisible()
-        ? miniWindow
-        : null
-
-  const options: Electron.MessageBoxOptions = {
-    type: 'question',
-    buttons: ['Cancel', 'Quit'],
-    defaultId: 1,
-    cancelId: 0,
-    noLink: true,
-    title: 'Quit Flux Pomo',
-    message: 'Quit Flux Pomo?',
-    detail: 'The timer will stop and the app will close completely.'
+  if (miniModeActive) {
+    restoreFromMini()
   }
 
-  const result = parent
-    ? await dialog.showMessageBox(parent, options)
-    : await dialog.showMessageBox(options)
-
-  if (result.response !== 1) {
-    return false
+  const main = getMainWindow()
+  if (!main || main.isDestroyed()) {
+    quitApp()
+    return true
   }
+
+  await whenMainVisible(main)
+  if (main.isDestroyed()) return false
+
+  main.show()
+  main.focus()
+
+  const confirmed = await promptQuitInRenderer(main)
+  if (!confirmed) return false
 
   quitApp()
   return true
+}
+
+export function registerQuitPromptIpc(): void {
+  ipcMain.handle(IpcChannels.windowQuitConfirm, () => {
+    resolveQuitPrompt(true)
+  })
+
+  ipcMain.handle(IpcChannels.windowQuitCancel, () => {
+    resolveQuitPrompt(false)
+  })
 }
 
 function updateTrayMenu(): void {
@@ -481,8 +550,7 @@ function updateTrayMenu(): void {
     {
       label: isCompact ? 'Show Flux Pomo' : 'Compact timer',
       click: () => {
-        if (isCompact) restoreFromMini()
-        else minimizeToMini()
+        toggleCompactMode()
       }
     },
     { type: 'separator' },
@@ -500,10 +568,9 @@ function updateTrayMenu(): void {
 export function createTray(): void {
   if (tray) return
 
-  const image = nativeImage.createFromPath(icon)
-  const trayIcon = image.isEmpty()
+  const trayIcon = appIcon.isEmpty()
     ? nativeImage.createEmpty()
-    : image.resize({ width: 16, height: 16, quality: 'best' })
+    : appIcon.resize({ width: 16, height: 16, quality: 'best' })
   tray = new Tray(trayIcon)
   tray.setToolTip('Flux Pomo')
   tray.on('double-click', () => {
