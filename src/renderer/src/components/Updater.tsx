@@ -4,17 +4,13 @@ import type { UpdaterStatus } from '../../../shared/ipc'
 function statusLabel(status: UpdaterStatus): string {
   switch (status.type) {
     case 'idle':
-      return 'Idle'
+      return 'Idle — checks GitHub Releases for a newer portable build.'
     case 'checking':
-      return 'Checking for updates…'
+      return 'Checking GitHub Releases…'
     case 'available':
-      return `Update available: v${status.version}`
+      return `Update available: v${status.version}. Download the new portable .exe, then replace this app.`
     case 'not-available':
       return `Up to date (v${status.version})`
-    case 'downloading':
-      return `Downloading… ${status.percent.toFixed(0)}%`
-    case 'downloaded':
-      return `Ready to install v${status.version}`
     case 'error':
       return `Update error: ${status.message}`
     case 'skipped':
@@ -44,22 +40,9 @@ function Updater(): React.JSX.Element {
     } catch (error) {
       setStatus({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Download failed'
+        message: error instanceof Error ? error.message : 'Could not open download'
       })
     } finally {
-      setBusy(false)
-    }
-  }
-
-  const install = async (): Promise<void> => {
-    setBusy(true)
-    try {
-      await window.api.updater.install()
-    } catch (error) {
-      setStatus({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Install failed'
-      })
       setBusy(false)
     }
   }
@@ -67,6 +50,10 @@ function Updater(): React.JSX.Element {
   return (
     <div className="updater">
       <p className="tip">{statusLabel(status)}</p>
+      <p className="settings-note">
+        Portable builds update by downloading a new `.exe` from GitHub Releases (close the app,
+        replace the file, relaunch).
+      </p>
       <div className="actions">
         <div className="action">
           <a
@@ -88,20 +75,7 @@ function Updater(): React.JSX.Element {
                 void download()
               }}
             >
-              Download
-            </a>
-          </div>
-        ) : null}
-        {status.type === 'downloaded' ? (
-          <div className="action">
-            <a
-              href="#install-update"
-              onClick={(event) => {
-                event.preventDefault()
-                void install()
-              }}
-            >
-              Restart & install
+              Download update
             </a>
           </div>
         ) : null}

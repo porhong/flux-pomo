@@ -56,8 +56,7 @@ html.is-mini #root {
   will-change: width;
   cursor: grab;
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(141, 181, 100, 0.16), transparent 55%),
-    var(--ink);
+    radial-gradient(120% 140% at 0% 0%, rgba(141, 181, 100, 0.16), transparent 55%), var(--ink);
   border: 1px solid rgba(243, 239, 230, 0.1);
   border-radius: 999px;
   box-shadow: none;
@@ -411,8 +410,7 @@ html.is-mini #root {
 .mini-root:has(.phase-shortBreak) .mini-card,
 .mini-root:has(.phase-longBreak) .mini-card {
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(228, 168, 75, 0.18), transparent 55%),
-    var(--ink);
+    radial-gradient(120% 140% at 0% 0%, rgba(228, 168, 75, 0.18), transparent 55%), var(--ink);
 }
 
 .mini-toast {

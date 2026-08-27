@@ -48,7 +48,7 @@ function MusicController(): React.JSX.Element {
   const persistVolume = useMusicStore((s) => s.persistVolume)
 
   const hasTracks = tracks.length > 0
-  const title = hasTracks ? tracks[index]?.name ?? 'Track' : loading ? 'Loading…' : emptyReason
+  const title = hasTracks ? (tracks[index]?.name ?? 'Track') : loading ? 'Loading…' : emptyReason
 
   return (
     <div className="music-controller" aria-label="Focus music">

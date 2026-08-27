@@ -57,7 +57,12 @@ function cancelFade(): void {
   }
 }
 
-function animateVolume(from: number, to: number, durationMs: number, generation: number): Promise<void> {
+function animateVolume(
+  from: number,
+  to: number,
+  durationMs: number,
+  generation: number
+): Promise<void> {
   const el = ensureAudio()
   return new Promise((resolve) => {
     if (durationMs <= 0 || generation !== fadeGeneration) {
@@ -221,10 +226,7 @@ export function stopKeepIndex(): void {
 }
 
 /** Start at volume 0 during the user gesture, delay, then fade in. */
-export function fadeInPlay(options?: {
-  delayMs?: number
-  fadeMs?: number
-}): void {
+export function fadeInPlay(options?: { delayMs?: number; fadeMs?: number }): void {
   if (tracks.length === 0) return
 
   const delayMs = options?.delayMs ?? MUSIC_START_DELAY_MS
@@ -254,10 +256,7 @@ export function fadeInPlay(options?: {
 }
 
 /** Fade out, pause, restore target volume, then run callback (e.g. pause SFX). */
-export function fadeOutPause(options?: {
-  fadeMs?: number
-  onComplete?: () => void
-}): void {
+export function fadeOutPause(options?: { fadeMs?: number; onComplete?: () => void }): void {
   const fadeMs = options?.fadeMs ?? MUSIC_FADE_OUT_MS
   const onComplete = options?.onComplete
   const generation = ++fadeGeneration

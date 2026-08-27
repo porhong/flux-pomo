@@ -10,8 +10,7 @@ const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.flac
 let allowedMusicFolder: string | null = null
 
 export function setAllowedMusicFolder(folder: string | null): void {
-  allowedMusicFolder =
-    typeof folder === 'string' && folder.trim() ? resolve(folder.trim()) : null
+  allowedMusicFolder = typeof folder === 'string' && folder.trim() ? resolve(folder.trim()) : null
 }
 
 export function registerMusicScheme(): void {

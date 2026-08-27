@@ -48,9 +48,7 @@ function TimerPage(): React.JSX.Element {
           plannedMs={plannedMs}
           focusCountInCycle={focusCountInCycle}
           sessionsUntilLongBreak={settings.sessionsUntilLongBreak}
-          subtitle={
-            mood === 'focus' ? 'Deep work in progress.' : 'Stay with one thing, then rest.'
-          }
+          subtitle={mood === 'focus' ? 'Deep work in progress.' : 'Stay with one thing, then rest.'}
           onStart={onStart}
           onPause={onPause}
         />

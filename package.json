@@ -19,10 +19,11 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run icons:generate && npm run typecheck && electron-vite build",
-    "icons:generate": "python scripts/generate-icon.py",
+    "icons:generate": "node scripts/generate-icon.mjs",
+    "icons:apply-win": "node scripts/apply-win-icon.mjs",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win portable",
+    "build:win": "npm run build && electron-builder --win portable && npm run icons:apply-win",
     "build:mac": "npm run build && electron-builder --mac zip",
     "build:linux": "npm run build && electron-builder --linux AppImage"
   },
@@ -31,7 +32,6 @@
     "@fontsource/poppins": "^5.3.0",
     "date-fns": "^4.4.0",
     "electron-store": "^8.2.0",
-    "electron-updater": "^6.8.9",
     "react-router-dom": "^7.18.2",
     "zustand": "^5.0.15"
   },
@@ -50,9 +50,11 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "png-to-ico": "^3.0.2",
     "prettier": "^3.7.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "resedit": "^3.1.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.6"
   },

@@ -37,8 +37,7 @@ body {
   font-family: var(--font-body);
   background:
     radial-gradient(1200px 600px at 10% -10%, rgba(141, 181, 100, 0.22), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgba(199, 232, 184, 0.1), transparent 50%),
-    var(--ink);
+    radial-gradient(900px 500px at 100% 0%, rgba(199, 232, 184, 0.1), transparent 50%), var(--ink);
   color: var(--snow);
   overflow: hidden;
   user-select: none;

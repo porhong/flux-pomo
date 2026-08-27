@@ -9,6 +9,7 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 ## Features
 
 ### Timer
+
 - Focus / short break / long break cycles
 - Start, pause, reset, and skip
 - Configurable durations and sessions-until-long-break
@@ -16,6 +17,7 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 - Sound cues for start, pause, and rest
 
 ### Floating mini timer
+
 - Compact always-on-top chip (minimize from the title bar)
 - Hover to expand controls and status
 - Native-feel drag without DPI drift
@@ -23,6 +25,7 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 - Global shortcut to toggle full app ↔ floating mode
 
 ### Focus music
+
 - Enable a playlist from a **local folder** (flat scan)
 - Supported formats: `mp3`, `m4a`, `aac`, `wav`, `ogg`, `flac`
 - Auto-play during **running focus**; pause on timer pause and breaks
@@ -31,11 +34,13 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 - Music continues while navigating Timer / History / Settings
 
 ### History
+
 - Day / week / month views
 - Session list, summary strip, and charts
 - Persisted with `electron-store`
 
 ### Settings & system
+
 - Durations, auto-start, focus music, and shortcuts
 - Global shortcuts (when enabled):
   - **Ctrl/⌘ + Shift + Space** — start / pause timer
@@ -43,22 +48,23 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 - Custom in-app quit confirmation
 - Fixed window size (non-resizable)
 - System tray with show / compact / quit
-- Auto-updates via GitHub Releases
+- Update checks against GitHub Releases (portable download)
 
 ---
 
 ## Tech stack
 
-| Layer | Choice |
-|--------|--------|
-| Desktop shell | Electron 44 |
-| Build tooling | electron-vite + Vite 7 |
-| UI | React 19 + React Router 7 |
-| State | Zustand |
-| Persistence | electron-store |
-| Styling | CSS variables + app stylesheet |
-| Packaging | electron-builder (portable / zip / AppImage) |
-| Updates | electron-updater |
+| Layer         | Choice                                       |
+| ------------- | -------------------------------------------- |
+| Desktop shell | Electron 44                                  |
+| Build tooling | electron-vite + Vite 7                       |
+| UI            | React 19 + React Router 7                    |
+| State         | Zustand                                      |
+| Persistence   | electron-store                               |
+| Styling       | CSS variables + app stylesheet               |
+| Packaging     | electron-builder (portable / zip / AppImage) |
+| Updates       | GitHub Releases API (portable download)      |
+| CI            | GitHub Actions release workflow              |
 
 **Requirements:** Node.js **≥ 22.12**, npm, and Python 3 with Pillow (for packaging icons).
 
@@ -99,21 +105,25 @@ flux-pomo/
 ## Architecture notes
 
 ### Process model
+
 - **Main** owns windows, tray, native dialogs, file access, and global shortcuts.
 - **Preload** exposes a narrow `window.api` surface via `contextBridge` (sandbox + context isolation on).
 - **Renderer** owns the timer ticker, UI, and audio playback.
 - Shared contracts live in `src/shared/` so channel names and types stay in sync.
 
 ### Timer sync
+
 - The **main window** owns the countdown.
 - State is published to the **mini window** over IPC (`timer:state`).
 - Mini countdown uses `endsAt` locally to avoid per-tick chatter.
 
 ### Focus music security
+
 - Tracks are served through a privileged `flux-music://` protocol.
 - Only files under the user-selected music folder are allowed (path traversal rejected).
 
 ### Persistence
+
 - Settings and sessions are stored under the app user-data directory (e.g. `%APPDATA%\FluxPomo` on Windows).
 - Settings are clamped/normalized on read/write.
 
@@ -139,30 +149,37 @@ Open the app, set durations in **Settings**, optionally pick a music folder, ena
 
 ## Scripts
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Development with HMR |
-| `npm run start` | Preview built output in Electron |
-| `npm run typecheck` | Typecheck main + renderer |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier |
+| Command                  | Purpose                                 |
+| ------------------------ | --------------------------------------- |
+| `npm run dev`            | Development with HMR                    |
+| `npm run start`          | Preview built output in Electron        |
+| `npm run typecheck`      | Typecheck main + renderer               |
+| `npm run lint`           | ESLint                                  |
+| `npm run format`         | Prettier                                |
 | `npm run icons:generate` | Generate `build/icon.png` from the logo |
-| `npm run build` | Icons + typecheck + production bundle |
-| `npm run build:win` | Windows portable `.exe` → `dist/` |
-| `npm run build:mac` | macOS `.zip` |
-| `npm run build:linux` | Linux AppImage |
-| `npm run build:unpack` | Unpackaged dir build (debug packaging) |
+| `npm run build`          | Icons + typecheck + production bundle   |
+| `npm run build:win`      | Windows portable `.exe` → `dist/`       |
+| `npm run build:mac`      | macOS `.zip`                            |
+| `npm run build:linux`    | Linux AppImage                          |
+| `npm run build:unpack`   | Unpackaged dir build (debug packaging)  |
 
 ### Icon generation
 
-Packaging needs a PNG icon. Generate it (requires Python + Pillow):
+Packaging needs a multi-size Windows `.ico` (Explorer list view fails with single-size icons). Generate from the logo:
 
 ```bash
-pip install pillow   # once
+# Requires Python 3 + Pillow for WebP → PNG
+pip install pillow
 npm run icons:generate
 ```
 
-Source logo: `resources/Flux Pomo logo.webp` → `build/icon.png`.
+This writes:
+- `build/icon.png` / `resources/icon.png` (512×512)
+- `build/icon.ico` (16 / 32 / 48 / 256 — used by the portable `.exe`)
+
+`npm run build` / `npm run build:win` run icon generation automatically.
+
+After the Windows portable build, `npm run icons:apply-win` embeds that `.ico` into both `FluxPomo.exe` and `flux-pomo-*-portable.exe` (the portable wrapper often keeps Electron’s default icon without this step).
 
 ---
 
@@ -178,62 +195,96 @@ Artifacts land in `dist/`. On Windows, run `flux-pomo-*-portable.exe` directly �
 
 ---
 
+## GitHub Releases (CI)
+
+Pushing a version tag builds the Windows portable app and attaches it to a GitHub Release.
+
+1. Bump `version` in `package.json` (e.g. `0.2.0`)
+2. Commit the bump
+3. Create and push a matching tag:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+4. GitHub Actions (`.github/workflows/release.yml`) runs on `windows-latest`, builds `flux-pomo-0.2.0-portable.exe`, and publishes the Release
+
+You can also run the workflow manually (`workflow_dispatch`) and pass the same `vX.Y.Z` tag. The tag version **must** match `package.json`.
+
+Users download the portable `.exe` from the [Releases](https://github.com/porhong/flux-pomo/releases) page.
+
+### In-app updates (portable)
+
+Packaged builds check GitHub Releases on launch and from **Settings → Updates**.
+
+When a newer version exists, **Download update** opens the portable `.exe` (or release page). Close Flux Pomo, replace the old executable with the new file, and relaunch. Silent self-replace is not supported for portable apps.
+
+---
+
 ## Usage guide
 
 ### Everyday flow
+
 1. Start a focus session from the timer (or global shortcut).
 2. Minimize to the floating chip when you want the timer out of the way.
 3. Hover the chip for controls; drag to reposition.
 4. Press **Ctrl/⌘ + Shift + X** to jump back to the full app (and again to compact).
 
 ### Focus music
+
 1. **Settings → Focus music → Enable**
 2. Browse to a folder of audio files
 3. Adjust volume and **Save**
 4. Music starts with running focus (after the start sound cue)
 
 ### Quit
+
 - Title-bar close and tray **Quit** open a themed confirmation dialog before exiting.
 
 ---
 
 ## Configuration defaults
 
-| Setting | Default |
-|---------|---------|
-| Focus | 25 min |
-| Short break | 5 min |
-| Long break | 15 min |
-| Sessions until long break | 4 |
-| Auto-start breaks / focus | off |
-| Global shortcuts | off |
-| Timer toggle | `CommandOrControl+Shift+Space` |
-| Window toggle | `CommandOrControl+Shift+X` |
-| Focus music | off |
-| Music volume | 50% |
+| Setting                   | Default                        |
+| ------------------------- | ------------------------------ |
+| Focus                     | 25 min                         |
+| Short break               | 5 min                          |
+| Long break                | 15 min                         |
+| Sessions until long break | 4                              |
+| Auto-start breaks / focus | off                            |
+| Global shortcuts          | off                            |
+| Timer toggle              | `CommandOrControl+Shift+Space` |
+| Window toggle             | `CommandOrControl+Shift+X`     |
+| Focus music               | off                            |
+| Music volume              | 50%                            |
 
 ---
 
 ## Development best practices
 
 ### Security
+
 - Keep `contextIsolation: true`, `sandbox: true`, and `nodeIntegration: false`.
 - Never expose raw `ipcRenderer` to the renderer — extend `src/preload/index.ts` and `src/shared/ipc.ts` together.
 - Validate / clamp all settings in the main store before persisting.
 - Prefer scoped custom protocols for local media over disabling `webSecurity`.
 
 ### Code organization
+
 - Put cross-process types and channel names in `src/shared/`.
 - Prefer small Zustand stores over prop drilling for timer / settings / music.
 - Keep one-shot SFX (`sounds.ts`) separate from looping BGM (`musicPlayer.ts`).
 - Prefer high-level CSS tokens in `tokens.css` for color and type.
 
 ### Quality gates
+
 - Run `npm run typecheck` before commits that touch IPC or stores.
 - Run `npm run lint` / `npm run format` for consistency.
 - Packaging always regenerates icons and typechecks (`npm run build`).
 
 ### UX guidelines for this app
+
 - Fixed window size — design for ~480×720, not fluid dashboards.
 - Prefer compact vertical rhythm on the timer page (tight groups, not large empty stretch).
 - Matcha for focus accents; amber for breaks.
@@ -243,13 +294,13 @@ Artifacts land in `dist/`. On Windows, run `flux-pomo-*-portable.exe` directly �
 
 ## Troubleshooting
 
-| Issue | What to try |
-|-------|-------------|
-| Global shortcuts do nothing | Enable them in Settings, Save, and restart if the OS held the binding |
-| Shortcut already in use | Choose another key combo; two shortcuts cannot share the same accelerator |
-| Music won’t start | Pick a folder with supported audio, enable music, click Start once (autoplay needs a gesture) |
-| Floating chip missing | Use title-bar Minimize (not OS minimize); or press the window toggle shortcut |
-| Icon missing in packaged build | Run `npm run icons:generate` (Pillow required) before / via `npm run build` |
+| Issue                          | What to try                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------------- |
+| Global shortcuts do nothing    | Enable them in Settings, Save, and restart if the OS held the binding                         |
+| Shortcut already in use        | Choose another key combo; two shortcuts cannot share the same accelerator                     |
+| Music won’t start              | Pick a folder with supported audio, enable music, click Start once (autoplay needs a gesture) |
+| Floating chip missing          | Use title-bar Minimize (not OS minimize); or press the window toggle shortcut                 |
+| Icon missing in packaged build | Run `npm run icons:generate` (Pillow required) before / via `npm run build`                   |
 
 ---
 
@@ -262,4 +313,4 @@ MIT © [porhong](https://github.com/porhong)
 ## Links
 
 - Repository: [github.com/porhong/flux-pomo](https://github.com/porhong/flux-pomo)
-- Releases: used by `electron-updater` for auto-updates
+- Releases: [github.com/porhong/flux-pomo/releases](https://github.com/porhong/flux-pomo/releases)

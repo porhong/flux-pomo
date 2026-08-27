@@ -1,8 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
-import {
-  DEFAULT_SETTINGS,
-  type PomodoroSettings
-} from '../../../shared/types'
+import { DEFAULT_SETTINGS, type PomodoroSettings } from '../../../shared/types'
 import Updater from '../components/Updater'
 import { acceleratorFromKeyboardEvent, formatAcceleratorLabel } from '../lib/accelerator'
 import { useSettingsStore } from '../stores/settingsStore'

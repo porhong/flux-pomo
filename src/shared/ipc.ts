@@ -63,14 +63,6 @@ export type UpdaterStatus =
   | { type: 'checking' }
   | { type: 'available'; version: string }
   | { type: 'not-available'; version: string }
-  | {
-      type: 'downloading'
-      percent: number
-      bytesPerSecond: number
-      transferred: number
-      total: number
-    }
-  | { type: 'downloaded'; version: string }
   | { type: 'error'; message: string }
   | { type: 'skipped'; message: string }
 
@@ -78,6 +70,8 @@ export interface UpdateCheckResult {
   updateAvailable: boolean
   version: string
   message?: string
+  downloadUrl?: string
+  releaseUrl?: string
 }
 
 export interface ShortcutStatus {

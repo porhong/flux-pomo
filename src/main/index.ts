@@ -3,7 +3,12 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { IpcChannels, type TimerSnapshot } from '../shared/ipc'
 import { configureUserDataPath, getUserDataPath } from './paths'
 import { registerPomodoroIpc } from './pomodoro-ipc'
-import { registerMusicIpc, registerMusicProtocol, registerMusicScheme, setAllowedMusicFolder } from './music'
+import {
+  registerMusicIpc,
+  registerMusicProtocol,
+  registerMusicScheme,
+  setAllowedMusicFolder
+} from './music'
 import { setupAutoUpdater } from './updater'
 import {
   createMainWindow,
