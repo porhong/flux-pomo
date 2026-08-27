@@ -22,10 +22,10 @@
     "icons:generate": "node scripts/generate-icon.mjs",
     "icons:apply-win": "node scripts/apply-win-icon.mjs",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win portable && npm run icons:apply-win",
-    "build:mac": "npm run build && electron-builder --mac zip",
-    "build:linux": "npm run build && electron-builder --linux AppImage"
+    "build:unpack": "npm run build && electron-builder --dir --publish never",
+    "build:win": "npm run build && electron-builder --win portable --publish never && npm run icons:apply-win",
+    "build:mac": "npm run build && electron-builder --mac zip --publish never",
+    "build:linux": "npm run build && electron-builder --linux AppImage --publish never"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",

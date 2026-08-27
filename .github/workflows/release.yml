@@ -67,6 +67,8 @@ jobs:
         env:
           # Avoid interactive / CI signing prompts for unsigned portable builds
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          # electron-builder auto-publishes on tags; we upload via softprops instead
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify portable artifact
         shell: bash
