@@ -88,3 +88,76 @@ jobs:
           files: dist/flux-pomo-${{ steps.version.outputs.version }}-portable.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          elif [[ -n "${{ inputs.tag }}" ]]; then
+            TAG="${{ inputs.tag }}"
+          else
+            echo "No tag provided. Push a v* tag or pass workflow_dispatch input."
+            exit 1
+          fi
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]; then
+            echo "Invalid tag format: $TAG (expected vX.Y.Z)"
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+
+          if [[ "$PKG_VERSION" != "$VERSION" ]]; then
+            echo "package.json version ($PKG_VERSION) does not match tag version ($VERSION)"
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS DMG
+        run: npm run build:mac
+        env:
+          # Unsigned DMG — no Apple Developer cert in CI
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify DMG artifact
+        id: artifact
+        shell: bash
+        run: |
+          ARTIFACT="dist/flux-pomo-${{ steps.version.outputs.version }}-mac.dmg"
+          if [[ ! -f "$ARTIFACT" ]]; then
+            echo "Missing artifact: $ARTIFACT"
+            ls -la dist || true
+            exit 1
+          fi
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Flux Pomo ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: dist/flux-pomo-${{ steps.version.outputs.version }}-mac.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

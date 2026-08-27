@@ -62,7 +62,7 @@ Flux Pomo keeps deep work simple: a clean timer, an always-on-top floating chip,
 | State         | Zustand                                      |
 | Persistence   | electron-store                               |
 | Styling       | CSS variables + app stylesheet               |
-| Packaging     | electron-builder (portable / zip / AppImage) |
+| Packaging     | electron-builder (portable / DMG / AppImage) |
 | Updates       | GitHub Releases API (portable self-update)   |
 | CI            | GitHub Actions release workflow              |
 
@@ -162,7 +162,7 @@ Open the app, set durations in **Settings**, optionally pick a music folder, ena
 | `npm run icons:apply-win` | Embed `build/icon.ico` into Windows `.exe` after package |
 | `npm run build`          | Icons + typecheck + production bundle   |
 | `npm run build:win`      | Windows portable `.exe` → `dist/`       |
-| `npm run build:mac`      | macOS `.zip`                            |
+| `npm run build:mac`      | macOS `.dmg` (requires macOS / CI)      |
 | `npm run build:linux`    | Linux AppImage                          |
 | `npm run build:unpack`   | Unpackaged dir build (debug packaging)  |
 
@@ -173,6 +173,7 @@ Packaging uses **committed** icons under `build/` — release CI does **not** re
 | File | Purpose |
 |------|---------|
 | `build/icon.ico` | Windows portable / Explorer (multi-size) |
+| `build/icon.icns` | macOS DMG / app icon |
 | `build/icon.png` | Linux / general packaging |
 | `resources/icon.png` | Runtime window icon |
 
@@ -193,18 +194,28 @@ After a Windows portable build, `icons:apply-win` embeds the committed `.ico` in
 ## Portable builds
 
 ```bash
-npm run build:win    # Windows portable .exe
-npm run build:mac    # macOS zip
+npm run build:win    # Windows portable .exe (run on Windows)
+npm run build:mac    # macOS DMG — must run on macOS (or use GitHub Actions)
 npm run build:linux  # Linux AppImage
 ```
 
-Artifacts land in `dist/`. On Windows, run `flux-pomo-*-portable.exe` directly — no installer.
+Artifacts land in `dist/`:
+
+| Platform | Artifact |
+|----------|----------|
+| Windows | `flux-pomo-*-portable.exe` |
+| macOS | `flux-pomo-*-mac.dmg` |
+| Linux | `flux-pomo-*-portable.AppImage` |
+
+On Windows, run the portable `.exe` directly — no installer.
+
+**macOS note:** electron-builder cannot package a Mac `.app` / `.dmg` from Windows or Linux. Use a Mac, or push a `v*` tag so CI builds on `macos-latest`.
 
 ---
 
 ## GitHub Releases (CI)
 
-Pushing a version tag builds the Windows portable app and attaches it to a GitHub Release.
+Pushing a version tag builds **Windows portable** and **macOS DMG** and attaches both to a GitHub Release.
 
 1. Bump `version` in `package.json` (e.g. `0.2.0`)
 2. Commit the bump
@@ -215,11 +226,22 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-4. GitHub Actions (`.github/workflows/release.yml`) runs on `windows-latest`, builds `flux-pomo-0.2.0-portable.exe`, and publishes the Release
+4. GitHub Actions (`.github/workflows/release.yml`) runs:
+   - `windows-latest` → `flux-pomo-0.2.0-portable.exe`
+   - `macos-latest` → `flux-pomo-0.2.0-mac.dmg` (universal, unsigned)
 
 You can also run the workflow manually (`workflow_dispatch`) and pass the same `vX.Y.Z` tag. The tag version **must** match `package.json`.
 
-Users download the portable `.exe` from the [Releases](https://github.com/porhong/flux-pomo/releases) page.
+Users download artifacts from the [Releases](https://github.com/porhong/flux-pomo/releases) page.
+
+### macOS Gatekeeper (unsigned DMG)
+
+The CI DMG is **not** Apple-notarized. First open may be blocked:
+
+1. Control-click (Right-click) the app → **Open** → confirm, or
+2. Remove quarantine: `xattr -cr "/Applications/Flux Pomo.app"`
+
+Signed + notarized builds need an Apple Developer account (not configured yet).
 
 ### In-app updates (portable)
 

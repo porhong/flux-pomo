@@ -10,6 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const required = [
   path.join(root, 'build', 'icon.ico'),
+  path.join(root, 'build', 'icon.icns'),
   path.join(root, 'build', 'icon.png'),
   path.join(root, 'resources', 'icon.png')
 ]
@@ -25,7 +26,7 @@ if (missing.length > 0) {
   process.exit(1)
 }
 
-const ico = fs.readFileSync(required[0])
+const ico = fs.readFileSync(path.join(root, 'build', 'icon.ico'))
 const entries = ico.readUInt16LE(4)
 if (entries < 3) {
   console.error(

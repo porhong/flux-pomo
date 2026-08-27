@@ -28,14 +28,15 @@ portable:
   requestExecutionLevel: user
   unpackDirName: flux-pomo-portable
 mac:
+  icon: build/icon.icns
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
   target:
-    - target: zip
+    - target: dmg
       arch:
         - universal
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-mac.${ext}
 linux:
   target:
     - AppImage
